@@ -38,11 +38,42 @@ void SimParameters::readInputFile(const std::string& filename) {
 			if (!(iss >> nspecies)) {
 				std::cerr << "ERROR: Invalid NUMBER_SPECIES value" << std::endl;
 			}
+			ref_species_mass_frac.resize(nspecies);
+
+			if (getline(inputFile, line)) {
+				std::istringstream massFractionStream(line);
+				for (int i = 0; i < nspecies; ++i) {
+					if (!(massFractionStream >> ref_species_mass_frac(i))) {
+						std::cerr << "ERROR: Invalid mass fraction value" << std::endl;
+						break;
+					}
+				}
+			}
 		}
 		else if (keyword == "SPECIES_THERMO_DATA") {
 			getline(inputFile, speciesThermoDataPath); // Assuming the path is on the next line
 		}
+		else if (keyword == "REFERENCE_VELOCITY") {
+			if (!(iss >> ref_velocity)) {
+				std::cerr << "ERROR: Invalid REFERENCE_VELOCITY value" << std::endl;
+			}
+		}
+		else if (keyword == "REFERENCE_TEMPERATURE") {
+			if (!(iss >> ref_temperature)) {
+				std::cerr << "ERROR: Invalid REFERENCE_TEMPERATURE value" << std::endl;
+			}
+		}
+		else if (keyword == "REFERENCE_MIXTURE_DENSITY") {
+			if (!(iss >> ref_mixture_rho)) {
+				std::cerr << "ERROR: Invalid REFERENCE_DENSITY value" << std::endl;
+			}
+		}
+	}
+	inputFile.close();
+
+	ref_rho_s.resize(nspecies);
+	for (int i = 0; i < nspecies; ++i) {
+		ref_rho_s(i) = ref_mixture_rho * ref_species_mass_frac(i);
 	}
 
-	inputFile.close();
 }

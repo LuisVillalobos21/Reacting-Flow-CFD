@@ -5,6 +5,12 @@ PrimVars::PrimVars(const SimParameters& params) : var_vec(Eigen::VectorXd::Zero(
 CellStateVars::CellStateVars(const SimParameters& params, const Mesh& mesh, const Species& species)
 	:params(params), species(species) {
 		cell_vec.resize(mesh.ncells, PrimVars(params));
+
+
+}
+
+void CellStateVars::initializeFlowField() {
+
 }
 
 double CellStateVars::getRho_s(int cell_idx, int species_idx) const {

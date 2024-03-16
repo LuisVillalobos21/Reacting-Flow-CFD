@@ -13,6 +13,8 @@ int main() {
     std::string inputfilepath = "C:\\Users\\luis2\\Documents\\MAE 770\\Project 2\\inputfile.dat";
     SimParameters params(inputfilepath, mesh, species);
 
+    std::cout << params.ref_rho_s << '\n';
+
     CellStateVars state(params, mesh, species);
 
     CellJacobians LHS(params, mesh, species, state);

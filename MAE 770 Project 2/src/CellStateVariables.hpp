@@ -17,6 +17,8 @@ struct CellStateVars {
 
     CellStateVars(const SimParameters& params, const Mesh& mesh, const Species& species);
 
+    void initializeFlowField();
+
     double getRho_s(int cell_idx, int species_idx) const;
 
     double getRho_tot(int cell_idx) const;
