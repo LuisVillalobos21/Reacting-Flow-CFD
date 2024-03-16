@@ -1,0 +1,43 @@
+# Ignore build directories
+build/
+out/
+Release/
+Debug/
+x64/
+.vs/
+
+# Ignore all .exe, .dll, .so, .dylib files
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Ignore specific config files
+*.user
+*.aps
+*.pch
+*.vspscc
+*.vssscc
+*_i.c
+*_p.c
+*.ncb
+*.suo
+*.tlb
+*.tlh
+*.bak
+*.cache
+*.ilk
+*.log
+*.lib
+*.sbr
+*.sdf
+*.pyc
+*.pyo
+
+# Ignore the settings directory of Visual Studio Code (if using)
+.vscode/
+
+# Add any other files or directories you wish to ignore
+# Example: Ignore all text files
+# *.txt
+
