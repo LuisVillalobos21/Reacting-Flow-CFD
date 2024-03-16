@@ -3,14 +3,24 @@
 PrimVars::PrimVars(const SimParameters& params) : var_vec(Eigen::VectorXd::Zero(params.nvariables)) {}
 
 CellStateVars::CellStateVars(const SimParameters& params, const Mesh& mesh, const Species& species)
-	:params(params), species(species) {
-		cell_vec.resize(mesh.ncells, PrimVars(params));
+	:params(params), mesh(mesh), species(species) {
+	cell_vec.resize(mesh.ncells, PrimVars(params));
 
-
+	initializeFlowField();
 }
 
 void CellStateVars::initializeFlowField() {
 
+	for (int cell_idx = 0; cell_idx < mesh.ncells; ++cell_idx) {
+
+		for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+			cell_vec[cell_idx].var_vec(species_idx) = params.ref_rho_s(species_idx);
+		}
+
+		cell_vec[cell_idx].var_vec(params.vel_idx) = params.ref_velocity;
+		cell_vec[cell_idx].var_vec(params.T_idx) = params.ref_temperature;
+		cell_vec[cell_idx].var_vec(params.Tv_idx) = params.ref_temperature;
+	}
 }
 
 double CellStateVars::getRho_s(int cell_idx, int species_idx) const {

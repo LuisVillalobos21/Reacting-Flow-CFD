@@ -12,6 +12,7 @@ struct CellStateVars {
 
     const SimParameters& params;
     const Species& species;
+    const Mesh& mesh;
 
     std::vector<PrimVars> cell_vec;
 
