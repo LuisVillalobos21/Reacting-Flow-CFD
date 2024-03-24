@@ -1,33 +1,63 @@
 #include "CellStateVariables.hpp"
 
-PrimVars::PrimVars(const SimParameters& params) : var_vec(Eigen::VectorXd::Zero(params.nvariables)) {}
+PrimVars::PrimVars(const SimParameters& params) 
+	: var_vec(Eigen::VectorXd::Zero(params.nvariables)), mass_fracs(Eigen::VectorXd::Zero(params.nspecies)), Pressure(0.0), Rho(0.0) {}
 
 CellStateVars::CellStateVars(const SimParameters& params, const Mesh& mesh, const Species& species)
 	:params(params), mesh(mesh), species(species) {
-	cell_vec.resize(mesh.ncells, PrimVars(params));
+
+	cell_vec.resize(mesh.jmax + 1, PrimVars(params));
 
 	initializeFlowField();
 }
 
 void CellStateVars::initializeFlowField() {
 
-	for (int cell_idx = 0; cell_idx < mesh.ncells; ++cell_idx) {
+	for (int cell_idx = 0; cell_idx < mesh.jmax + 1; ++cell_idx) {
 
 		for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
 			cell_vec[cell_idx].var_vec(species_idx) = params.ref_rho_s(species_idx);
+			cell_vec[cell_idx].mass_fracs(species_idx) = params.ref_species_mass_frac(species_idx);
 		}
 
 		cell_vec[cell_idx].var_vec(params.vel_idx) = params.ref_velocity;
 		cell_vec[cell_idx].var_vec(params.T_idx) = params.ref_temperature;
 		cell_vec[cell_idx].var_vec(params.Tv_idx) = params.ref_temperature;
+
+		cell_vec[cell_idx].Pressure = calcPressure(cell_idx);
+		cell_vec[cell_idx].Rho = calcRho(cell_idx);
 	}
+
+	cell_vec[5].var_vec(params.T_idx) = 300;
 }
 
 double CellStateVars::getRho_s(int cell_idx, int species_idx) const {
 	return cell_vec[cell_idx].var_vec[species_idx];
 }
 
-double CellStateVars::getRho_tot(int cell_idx) const {
+Eigen::VectorXd CellStateVars::calcMassfracs(int cell_idx) const {
+
+	Eigen::VectorXd fracs = Eigen::VectorXd::Zero(params.nspecies);
+
+	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+
+		fracs(species_idx) = getRho_s(cell_idx, species_idx) / getRho(cell_idx);
+	}
+
+	return fracs;
+}
+
+double CellStateVars::getMassFrac(int cell_idx, int species_idx) const {
+
+	return cell_vec[cell_idx].mass_fracs[species_idx];
+}
+
+double CellStateVars::getRho(int cell_idx) const {
+
+	return cell_vec[cell_idx].Rho;
+}
+
+double CellStateVars::calcRho(int cell_idx) const {
 
 	double rho = 0.0;
 
@@ -36,6 +66,70 @@ double CellStateVars::getRho_tot(int cell_idx) const {
 	}
 
 	return rho;
+}
+
+double CellStateVars::calcTotalEnergy(int cell_idx) const {
+
+	double h_o = 0.0;
+	double temp = getTemp(cell_idx);
+
+	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+
+		h_o += getMassFrac(cell_idx, species_idx) * (species.getIntEnergyTR(species_idx, temp) + species.getR_s(species_idx) * temp);
+		h_o += getMassFrac(cell_idx, species_idx) * species.getFormationEnergy(species_idx);
+	}
+
+	h_o += getKineticEnergy(cell_idx);
+	h_o += getIntEnergyVMix(cell_idx);
+
+	return h_o;
+}
+
+double CellStateVars::getIntEnergyVMix(int cell_idx) const {
+
+	double e_v = 0.0;
+	double temp_V = getTemp_V(cell_idx);
+
+	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+
+		e_v += getMassFrac(cell_idx, species_idx) * species.getIntEnergyV(species_idx, temp_V);
+	}
+
+	return e_v;
+}
+
+Eigen::VectorXd CellStateVars::getFluxVars(int cell_idx) const {
+
+	Eigen::VectorXd flux_vars = Eigen::VectorXd::Zero(params.nvariables);
+
+	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+
+		flux_vars(species_idx) = getMassFrac(cell_idx, species_idx);
+	}
+
+	flux_vars.segment(params.vel_idx, params.ndimension) = getVel_components(cell_idx);
+
+	flux_vars(params.T_idx) = calcTotalEnergy(cell_idx);
+
+	flux_vars(params.Tv_idx) = getIntEnergyVMix(cell_idx);
+
+	return flux_vars;
+}
+
+double CellStateVars::calcPressure(int cell_idx) const {
+
+	double P = 0.0;
+
+	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+		P += getRho_s(cell_idx, species_idx) * species.getR_s(species_idx) * getTemp(cell_idx);
+	}
+
+	return P * 1000;
+}
+
+double CellStateVars::getPressure(int cell_idx) const {
+
+	return cell_vec[cell_idx].Pressure;
 }
 
 Eigen::VectorXd CellStateVars::getVel_components(int cell_idx) const {
@@ -94,3 +188,15 @@ double CellStateVars::getRhoR_Mix(int cell_idx) const {
 
 	return rhoRs;
 }
+
+double CellStateVars::getSoundSpeed(int cell_idx) const {
+
+	double P = getPressure(cell_idx);
+	double rho = getRho(cell_idx);
+	double rhoR_mix = getRhoR_Mix(cell_idx);
+	double rhoCV_mix = getRhoCV_Mix(cell_idx);
+
+	double a2 = (P / rho) * (1 + rhoR_mix / rhoCV_mix);
+	return sqrt(a2);
+}
+

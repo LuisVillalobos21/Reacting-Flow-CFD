@@ -17,4 +17,4 @@ include_directories(${CMAKE_SOURCE_DIR}/common)
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
 # Create an executable with all source files
-add_executable(NOZZLE src/main.cpp  "src/WriteData.cpp" "src/MeshProccessing.cpp" "src/SpeciesThermo.cpp" "src/CellStateVariables.cpp" "src/SimParameters.cpp" "src/BuildCellJacobians.cpp")
+add_executable(NOZZLE src/main.cpp  "src/WriteData.cpp" "src/MeshProccessing.cpp" "src/SpeciesThermo.cpp" "src/CellStateVariables.cpp" "src/SimParameters.cpp" "src/BuildCellJacobians.cpp" "src/RightHandSide.cpp" "src/TimeIntegration.cpp")

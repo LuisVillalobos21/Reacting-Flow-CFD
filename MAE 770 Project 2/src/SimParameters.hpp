@@ -15,6 +15,8 @@ struct SimParameters {
     std::string gridPath;
     std::string speciesThermoDataPath;
 
+    int num_time_steps;
+    double CFL;
     double ref_velocity;
     double ref_temperature;
     double ref_mixture_rho;

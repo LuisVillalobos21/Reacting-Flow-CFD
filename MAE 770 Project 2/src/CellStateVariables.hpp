@@ -5,6 +5,12 @@
 struct PrimVars {
     Eigen::VectorXd var_vec;
 
+    Eigen::VectorXd mass_fracs;
+
+    double Rho;
+
+    double Pressure;
+
     PrimVars(const SimParameters& params);
 };
 
@@ -22,7 +28,17 @@ struct CellStateVars {
 
     double getRho_s(int cell_idx, int species_idx) const;
 
-    double getRho_tot(int cell_idx) const;
+    double getMassFrac(int cell_idx, int species_idx) const;
+
+    Eigen::VectorXd calcMassfracs(int cell_idx) const;
+
+    double calcRho(int cell_idx) const;
+
+    double getRho(int cell_idx) const;
+
+    double calcPressure(int cell_idx) const;
+
+    double getPressure(int cell_idx) const;
 
     Eigen::VectorXd getVel_components(int cell_idx) const;
 
@@ -32,7 +48,15 @@ struct CellStateVars {
 
     double getTemp_V(int cell_idx) const;
 
+    double getIntEnergyVMix(int cell_idx) const;
+
     double getRhoCV_Mix(int cell_idx) const;
 
     double getRhoR_Mix(int cell_idx) const;
+
+    double getSoundSpeed(int cell_idx) const;
+
+    double calcTotalEnergy(int cell_idx) const;
+
+    Eigen::VectorXd getFluxVars(int cell_idx) const;
 };
