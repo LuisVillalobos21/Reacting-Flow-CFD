@@ -20,6 +20,7 @@ struct SimParameters {
     double ref_velocity;
     double ref_temperature;
     double ref_mixture_rho;
+    double Pback;
     Eigen::VectorXd ref_species_mass_frac;
     Eigen::VectorXd ref_rho_s;
 

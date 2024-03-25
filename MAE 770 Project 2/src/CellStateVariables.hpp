@@ -26,6 +26,8 @@ struct CellStateVars {
 
     void initializeFlowField();
 
+    void CellStateVars::updatePressureBoundary();
+
     double getRho_s(int cell_idx, int species_idx) const;
 
     double getMassFrac(int cell_idx, int species_idx) const;
@@ -35,6 +37,8 @@ struct CellStateVars {
     double calcRho(int cell_idx) const;
 
     double getRho(int cell_idx) const;
+
+    double calcRhoOutFlow(int cell_idx) const;
 
     double calcPressure(int cell_idx) const;
 

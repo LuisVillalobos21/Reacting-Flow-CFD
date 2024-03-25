@@ -15,19 +15,14 @@ struct SpeciesThermo {
     double e_formation;
     double R_s;
 
-    SpeciesThermo(const std::string& filename) {
-
-        readSpeciesData(filename);
-
-        h_formation = calcEnthalpyEQ(temp_ref);
-        e_formation = calcIntEnergyEQ(temp_ref);
-        R_s = R_U / molecular_weight;
-    }
+    SpeciesThermo(const std::string& filename);
 
     void readSpeciesData(const std::string& filename);
 
     // Enthalpy Functions
     double calcPolyEnthalpy(const Eigen::MatrixXd& coeffs, double temp) const;
+
+    double calcPolyEnthalpyTR(double temp) const;
 
     double calcPolyEntropy(const Eigen::MatrixXd& coeffs, double temp) const;
 

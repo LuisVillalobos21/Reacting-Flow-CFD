@@ -37,7 +37,14 @@ void CellJacobians::updateLHS() {
 
 		calcPrimVarJacobian(cell_idx);
 
+		//std::cout << "matrix before multipled by cell area: " << '\n';
+		//std::cout << cell_vec[cell_idx].matrix << '\n';
+
 		cell_vec[cell_idx].matrix *= mesh.getCellArea1D(cell_idx);
+
+		//std::cout << "cell area: " << mesh.getCellArea1D(cell_idx) << '\n';
+		//std::cout << cell_vec[cell_idx].matrix << '\n';
+
 	}
 }
 
@@ -55,8 +62,6 @@ void CellJacobians::calcPartial_Et_RhoS(int cell_idx) {
 
 	double temp_tr = state.getTemp(cell_idx);
 	double temp_V = state.getTemp_V(cell_idx);
-	double rhoCV = state.getRhoCV_Mix(cell_idx);
-	double rhoRs = state.getRhoR_Mix(cell_idx);
 
 	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
 
@@ -67,7 +72,6 @@ void CellJacobians::calcPartial_Et_RhoS(int cell_idx) {
 
 		jacobian_value += species.getIntEnergyTR(species_idx, temp_tr);
 		jacobian_value += species.getFormationEnergy(species_idx);
-		//jacobian_value -= (rhoCV / rhoRs) * species.getR_s(species_idx) * temp_tr;
 		jacobian_value += state.getKineticEnergy(cell_idx) / state.getRho(cell_idx);
 		jacobian_value += species.getIntEnergyV(species_idx, temp_V);
 
@@ -86,7 +90,7 @@ void CellJacobians::calcPartial_Et_u(int cell_idx) {
 
 		int col_idx = params.vel_idx + i;
 
-		cell_vec[cell_idx].matrix(row_idx, col_idx) += rho * vel_components(i);
+		cell_vec[cell_idx].matrix(row_idx, col_idx) += rho * vel_components(i); // no longer multipled by 1000
 	}
 }
 

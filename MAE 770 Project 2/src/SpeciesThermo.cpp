@@ -1,6 +1,15 @@
 #include "SpeciesThermo.hpp"
 
 // SPECIESTHERMO STRUCT
+SpeciesThermo::SpeciesThermo(const std::string& filename) {
+
+    readSpeciesData(filename);
+
+    h_formation = calcEnthalpyEQ(temp_ref);
+    e_formation = calcIntEnergyEQ(temp_ref);
+    R_s = R_U / molecular_weight;
+}
+
 void SpeciesThermo::readSpeciesData(const std::string& filename) {
 
     coeff_high.resize(7);
@@ -62,6 +71,24 @@ double SpeciesThermo::calcPolyEnthalpy(const Eigen::MatrixXd& coeffs, double tem
         0.25 * coeffs(3) * pow(temp, 4.0) + 0.2 * coeffs(4) * pow(temp, 5.0) + coeffs(5));
 }
 
+double SpeciesThermo::calcPolyEnthalpyTR(double temp) const {
+
+    if (temp < lowT) {
+        throw std::runtime_error("ERROR: temperature of species exceeds curve fit bounds.");
+        return 0.0;
+    }
+
+    if (temp > highT) {
+        throw std::runtime_error("ERROR: temperature of species exceeds curve fit bounds.");
+        return 0.0;
+    }
+
+    if (temp < 1000)
+        return (R_U / molecular_weight) * (coeff_low(0) * temp);
+    else
+        return (R_U / molecular_weight) * (coeff_high(0) * temp);
+}
+
 double SpeciesThermo::calcEnthalpyEQ(double temp)  const {
 
     if (temp < lowT) {
@@ -83,25 +110,12 @@ double SpeciesThermo::calcEnthalpyEQ(double temp)  const {
 
 double SpeciesThermo::calcEnthalpyTransRot(double temp)  const {
 
-    if (temp < lowT) {
-        throw std::runtime_error("ERROR: temperature of species exceeds curve fit bounds.");
-        return 0.0;
-    }
-
-    if (temp > highT) {
-        throw std::runtime_error("ERROR: temperature of species exceeds curve fit bounds.");
-        return 0.0;
-    }
-
-    if (temp < 1000)
-        return (R_U / molecular_weight ) * (coeff_low(0) * temp);
-    else
-        return (R_U / molecular_weight) * (coeff_high(0) * temp);
+    return calcPolyEnthalpyTR(temp) - calcPolyEnthalpyTR(temp_ref) + h_formation;
 }
 
 double SpeciesThermo::calcEnthalpyVib(double temp)  const {
 
-    double h_tr = calcEnthalpyTransRot(temp) - calcEnthalpyTransRot(temp_ref);
+    double h_tr = calcPolyEnthalpyTR(temp) - calcPolyEnthalpyTR(temp_ref);
     double h = calcEnthalpyEQ(temp);
     return h - h_tr - h_formation; // refer to vulcan manual for formula
 }
@@ -110,7 +124,7 @@ double SpeciesThermo::calcEnthalpyNonEQ(double temp_tr, double temp_V)  const {
 
     // see vulcan manual for formula
 
-    return calcEnthalpyVib(temp_V) + calcEnthalpyTransRot(temp_tr) - calcEnthalpyTransRot(temp_ref) + h_formation;
+    return calcEnthalpyVib(temp_V) + calcEnthalpyTransRot(temp_tr);
 }
 
 double SpeciesThermo::calcIntEnergyEQ(double temp)  const {
@@ -120,7 +134,7 @@ double SpeciesThermo::calcIntEnergyEQ(double temp)  const {
 
 double SpeciesThermo::calcIntEnergyTransRot(double temp)  const {
 
-    return calcEnthalpyTransRot(temp) - calcEnthalpyTransRot(temp_ref) + h_formation - (R_U / molecular_weight) * temp;
+    return calcEnthalpyTransRot(temp) - (R_U / molecular_weight) * temp;
 }
 
 double SpeciesThermo::calcIntEnergyNonEQ(double temp_tr, double temp_V)  const {
@@ -222,6 +236,7 @@ double Species::getR_s(int species_idx) const {
 }
 
 double Species::getIntEnergyTR(int species_idx, double temp_tr) const {
+
     return species_vector[species_idx].calcIntEnergyTransRot(temp_tr);
 }
 

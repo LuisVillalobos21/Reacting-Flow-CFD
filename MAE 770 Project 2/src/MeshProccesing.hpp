@@ -15,7 +15,7 @@ struct Face {
 struct Mesh {
     int imax;
     int jmax;
-    double ncells;
+    int ncells;
 
     Eigen::MatrixXd x_coords;
     Eigen::MatrixXd y_coords;

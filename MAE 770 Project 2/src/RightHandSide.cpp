@@ -17,20 +17,41 @@ void CellResiduals::updateRHS() {
 
 	for (int cell_idx = 0; cell_idx < mesh.jmax; ++cell_idx) {
 
-		cell_flux_vec[cell_idx].vec.setZero();
+		//if (cell_idx == mesh.jmax - 1) {
+		//	cell_flux_vec[cell_idx].vec = calcFluxLDFSS(cell_idx);
+		//}
+
 		cell_flux_vec[cell_idx].vec = calcFluxLDFSS(cell_idx);
+
+		//std::cout << "Flux vector for face " << cell_idx << '\n';
+		//std::cout << cell_flux_vec[cell_idx].vec << '\n';
 	}
 
 	for (int cell_idx = 1; cell_idx < mesh.jmax; ++cell_idx) {
+
+		//if (cell_idx == mesh.jmax - 1) {
+		//	cell_res_vec[cell_idx].vec = calcResidual(cell_idx);
+		//	cell_res_vec[cell_idx].vec(params.vel_idx) -= calcQuasi_1DPressure(cell_idx);
+		//}
 		
 		cell_res_vec[cell_idx].vec = calcResidual(cell_idx);
-		cell_res_vec[cell_idx].vec(params.vel_idx) += calcQuasi_1DPressure(cell_idx);
+
+		//std::cout << "Res vector for cell " << cell_idx << '\n';
+		//std::cout << cell_flux_vec[cell_idx].vec << '\n';
+
+		cell_res_vec[cell_idx].vec(params.vel_idx) -= calcQuasi_1DPressure(cell_idx);
+
+		//std::cout << "Quasi 1D pressure contriubtion (negative)" << '\n';
+		//std::cout << -calcQuasi_1DPressure(cell_idx) << '\n';
 	}
 }
 
 Eigen::VectorXd CellResiduals::calcResidual(int cell_idx) const {
 
-	return mesh.getFaceArea1D(cell_idx) * cell_flux_vec[cell_idx].vec - mesh.getFaceArea1D(cell_idx - 1) * cell_flux_vec[cell_idx - 1].vec;
+	double dx = mesh.getCelldx1D(cell_idx);
+	Eigen::VectorXd right_flux = cell_flux_vec[cell_idx].vec;
+	Eigen::VectorXd left_flux = cell_flux_vec[cell_idx - 1].vec;
+	return (right_flux - left_flux) / dx;
 }
 
 Eigen::VectorXd CellResiduals::calcFluxLDFSS(int cell_idx) const {
@@ -67,8 +88,8 @@ Eigen::VectorXd CellResiduals::calcFluxLDFSS(int cell_idx) const {
 	double cep = cvlp - xmcp;
 	double cem = cvlm + xmcm;
 
-	double fml = state.getRho(cell_idx) * ahalf * cep;
-	double fmr = state.getRho(cell_idx + 1) * ahalf * cem;
+	double fml = mesh.getFaceArea1D(cell_idx) * state.getRho(cell_idx) * ahalf * cep;
+	double fmr = mesh.getFaceArea1D(cell_idx) * state.getRho(cell_idx + 1) * ahalf * cem;
 
 	double ppl = 0.25 * std::pow(xml + 1.0, 2) * (2.0 - xml);
 	double ppr = 0.25 * std::pow(xmr - 1.0, 2) * (2.0 + xmr);
@@ -78,7 +99,7 @@ Eigen::VectorXd CellResiduals::calcFluxLDFSS(int cell_idx) const {
 	Eigen::VectorXd left_vars = fml * state.getFluxVars(cell_idx); 
 	Eigen::VectorXd right_vars = fmr * state.getFluxVars(cell_idx + 1);
 
-	Eigen::VectorXd flux = right_vars - left_vars;
+	Eigen::VectorXd flux = right_vars + left_vars;
 	flux(params.vel_idx) += mesh.getFaceArea1D(cell_idx) * pnet;
 
 	return flux;

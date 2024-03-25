@@ -33,10 +33,23 @@ void TimeEvolveSolution::LinSolveCells() {
 
 	for (int cell_idx = 1; cell_idx < mesh.jmax; ++cell_idx) {
 
-		Eigen::VectorXd vec = SolutionResiduals.cell_res_vec[cell_idx].vec;
+		if (cell_idx == mesh.jmax - 2) {
+			Eigen::VectorXd vec = -SolutionResiduals.cell_res_vec[cell_idx].vec;
+			auto luDecomp = SolutionJacobians.cell_vec[cell_idx].matrix.partialPivLu();
+
+			Eigen::VectorXd solution = luDecomp.solve(vec);
+
+			//std::cout << solution << '\n' << '\n';
+
+			state.cell_vec[cell_idx].var_vec += solution;
+		}
+
+		Eigen::VectorXd vec = -SolutionResiduals.cell_res_vec[cell_idx].vec;
 		auto luDecomp = SolutionJacobians.cell_vec[cell_idx].matrix.partialPivLu();
 
 		Eigen::VectorXd solution = luDecomp.solve(vec);
+
+		//std::cout << solution << '\n' << '\n';
 
 		state.cell_vec[cell_idx].var_vec += solution;
 	}
@@ -62,18 +75,31 @@ void TimeEvolveSolution::updateDerivedVars() {
 
 	for (int cell_idx = 1; cell_idx < mesh.jmax; ++cell_idx) {
 
-		state.cell_vec[cell_idx].Pressure = state.calcPressure(cell_idx);
 		state.cell_vec[cell_idx].Rho = state.calcRho(cell_idx);
 		state.cell_vec[cell_idx].mass_fracs = state.calcMassfracs(cell_idx);
+		state.cell_vec[cell_idx].Pressure = state.calcPressure(cell_idx);
 	}
 }
 
-void TimeEvolveSolution::updateOutFlowBC() {
+void TimeEvolveSolution::updateGhostCellsPressureBoundary() {
 
-	state.cell_vec[mesh.jmax].var_vec = state.cell_vec[mesh.jmax - 1].var_vec;
-	state.cell_vec[mesh.jmax].Pressure = state.cell_vec[mesh.jmax - 1].Pressure;
-	state.cell_vec[mesh.jmax].Rho = state.cell_vec[mesh.jmax - 1].Rho;
-	state.cell_vec[mesh.jmax].mass_fracs = state.cell_vec[mesh.jmax - 1].mass_fracs;
+	int adjacent_idx = mesh.jmax - 1;
+	int ghost_idx = mesh.jmax;
+
+	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+
+		state.cell_vec[ghost_idx].mass_fracs(species_idx) = state.getMassFrac(adjacent_idx, species_idx);
+	}
+
+	state.cell_vec[ghost_idx].var_vec(params.vel_idx) = state.cell_vec[adjacent_idx].var_vec(params.vel_idx);
+	state.cell_vec[ghost_idx].var_vec(params.T_idx) = state.cell_vec[adjacent_idx].var_vec(params.T_idx);
+	state.cell_vec[ghost_idx].var_vec(params.Tv_idx) = state.cell_vec[adjacent_idx].var_vec(params.Tv_idx);
+
+	state.cell_vec[mesh.jmax].Rho = state.calcRhoOutFlow(ghost_idx);
+
+	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+		state.cell_vec[ghost_idx].var_vec(species_idx) = state.getRho(ghost_idx) * state.getMassFrac(ghost_idx, species_idx);
+	}
 }
 
 
@@ -83,8 +109,8 @@ void TimeEvolveSolution::solve() {
 
 		evolveCells();
 		updateDerivedVars();
-		updateOutFlowBC();
+		updateGhostCellsPressureBoundary();
 
-		//std::cout << "Current time step: " << step + 1 << '\n';
+		std::cout << "Current time step: " << step + 1 << '\n';
 	}
 }

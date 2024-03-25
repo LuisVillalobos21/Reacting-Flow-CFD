@@ -60,7 +60,7 @@ void SimParameters::readInputFile(const std::string& filename) {
 		}
 		else if (keyword == "NUM_TIME_STEPS") {
 			if (!(iss >> num_time_steps)) {
-				std::cerr << "ERROR: Invalid CFL value" << std::endl;
+				std::cerr << "ERROR: Invalid NUM_TIME_STEPS value" << std::endl;
 			}
 		}
 		else if (keyword == "REFERENCE_VELOCITY") {
@@ -76,6 +76,11 @@ void SimParameters::readInputFile(const std::string& filename) {
 		else if (keyword == "REFERENCE_MIXTURE_DENSITY") {
 			if (!(iss >> ref_mixture_rho)) {
 				std::cerr << "ERROR: Invalid REFERENCE_DENSITY value" << std::endl;
+			}
+		}
+		else if (keyword == "PRESSURE_OUTLET") {
+			if (!(iss >> Pback)) {
+				std::cerr << "ERROR: Invalid PRESSURE_OUTLET value" << std::endl;
 			}
 		}
 	}
