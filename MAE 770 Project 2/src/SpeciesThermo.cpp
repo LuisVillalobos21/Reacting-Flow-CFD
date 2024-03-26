@@ -78,10 +78,10 @@ double SpeciesThermo::calcPolyEnthalpyTR(double temp) const {
         return 0.0;
     }
 
-    if (temp > highT) {
-        throw std::runtime_error("ERROR: temperature of species exceeds curve fit bounds.");
-        return 0.0;
-    }
+    //if (temp > highT) {
+    //    throw std::runtime_error("ERROR: temperature of species exceeds curve fit bounds.");
+    //    return 0.0;
+    //}
 
     if (temp < 1000)
         return (R_U / molecular_weight) * (coeff_low(0) * temp);
@@ -97,10 +97,10 @@ double SpeciesThermo::calcEnthalpyEQ(double temp)  const {
     }
 
 
-    if (temp > highT) {
-        throw std::runtime_error("ERROR: temperature of species exceeds curve fit bounds.");
-        return 0.0;
-    }
+    //if (temp > highT) {
+    //    throw std::runtime_error("ERROR: temperature of species exceeds curve fit bounds.");
+    //    return 0.0;
+    //}
 
     if (temp < 1000)
         return calcPolyEnthalpy(coeff_low, temp);

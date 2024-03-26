@@ -8,12 +8,13 @@ CellStateVars::CellStateVars(const SimParameters& params, const Mesh& mesh, cons
 
 	cell_vec.resize(mesh.jmax + 1, PrimVars(params));
 
-	initializeFlowField();
+	initializeFlowFieldShock();
+	//initializeFlowFieldSuperSonic();
 }
 
-void CellStateVars::initializeFlowField() {
+void CellStateVars::initializeFlowFieldShock() {
 
-	int middle = mesh.jmax + 1 - static_cast<int>((mesh.jmax + 1) / 6);
+	int middle = mesh.jmax + 1 - static_cast<int>((mesh.jmax + 1) / 2);
 
 	for (int cell_idx = 0; cell_idx < middle; ++cell_idx) {
 
@@ -32,14 +33,35 @@ void CellStateVars::initializeFlowField() {
 
 	for (int cell_idx = middle; cell_idx < mesh.jmax + 1; ++cell_idx) {
 
+		double temp_init = 800;
+		double mach = std::sqrt(1.4 * 287 * temp_init);
+
+		cell_vec[cell_idx].var_vec(params.vel_idx) = mach * .75; // some subsonic velocity
+		cell_vec[cell_idx].var_vec(params.T_idx) = temp_init;
+		cell_vec[cell_idx].var_vec(params.Tv_idx) = temp_init;
+		cell_vec[cell_idx].Pressure = params.Pback;
+		cell_vec[cell_idx].Rho = params.Pback / (temp_init * 287);
+
 		for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
-			cell_vec[cell_idx].var_vec(species_idx) = 2.0 * params.ref_rho_s(species_idx);
+
+			cell_vec[cell_idx].mass_fracs(species_idx) = params.ref_species_mass_frac(species_idx);
+			cell_vec[cell_idx].var_vec(species_idx) = getRho(cell_idx) * getMassFrac(cell_idx, species_idx);
+		}
+	}
+}
+
+void CellStateVars::initializeFlowFieldSuperSonic() {
+
+	for (int cell_idx = 0; cell_idx < mesh.jmax + 1; ++cell_idx) {
+
+		for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+			cell_vec[cell_idx].var_vec(species_idx) = params.ref_rho_s(species_idx);
 			cell_vec[cell_idx].mass_fracs(species_idx) = params.ref_species_mass_frac(species_idx);
 		}
 
-		cell_vec[cell_idx].var_vec(params.vel_idx) = 100; // some subsonic velocity
-		cell_vec[cell_idx].var_vec(params.T_idx) = 2.0 * params.ref_temperature;
-		cell_vec[cell_idx].var_vec(params.Tv_idx) = 2.0 * params.ref_temperature;
+		cell_vec[cell_idx].var_vec(params.vel_idx) = params.ref_velocity;
+		cell_vec[cell_idx].var_vec(params.T_idx) = params.ref_temperature;
+		cell_vec[cell_idx].var_vec(params.Tv_idx) = params.ref_temperature;
 
 		cell_vec[cell_idx].Rho = calcRho(cell_idx);
 		cell_vec[cell_idx].Pressure = calcPressure(cell_idx);

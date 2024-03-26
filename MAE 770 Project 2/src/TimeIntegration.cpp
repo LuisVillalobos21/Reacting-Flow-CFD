@@ -81,10 +81,10 @@ void TimeEvolveSolution::updateDerivedVars() {
 	}
 }
 
-void TimeEvolveSolution::updateGhostCellsPressureBoundary() {
+void TimeEvolveSolution::updatePressureBoundary(int cell_idx) {
 
-	int adjacent_idx = mesh.jmax - 1;
-	int ghost_idx = mesh.jmax;
+	int ghost_idx = cell_idx;
+	int adjacent_idx = cell_idx - 1;
 
 	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
 
@@ -109,7 +109,7 @@ void TimeEvolveSolution::solve() {
 
 		evolveCells();
 		updateDerivedVars();
-		updateGhostCellsPressureBoundary();
+		updatePressureBoundary(mesh.jmax);
 
 		std::cout << "Current time step: " << step + 1 << '\n';
 	}

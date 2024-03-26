@@ -1,4 +1,6 @@
 #pragma once
+
+#include "ProjectIncludes.hpp"
 #include "SimParameters.hpp"
 #include "SpeciesThermo.hpp"
 
@@ -24,7 +26,9 @@ struct CellStateVars {
 
     CellStateVars(const SimParameters& params, const Mesh& mesh, const Species& species);
 
-    void initializeFlowField();
+    void initializeFlowFieldShock();
+
+    void initializeFlowFieldSuperSonic();
 
     void CellStateVars::updatePressureBoundary();
 

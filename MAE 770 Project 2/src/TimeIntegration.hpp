@@ -39,7 +39,7 @@ struct TimeEvolveSolution {
 
 	void updateDerivedVars();
 
-	void updateGhostCellsPressureBoundary();
+	void updatePressureBoundary(int cell_idx);
 
 	void solve();
 };
