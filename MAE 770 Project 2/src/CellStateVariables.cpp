@@ -33,7 +33,7 @@ void CellStateVars::initializeFlowFieldShock() {
 
 	for (int cell_idx = middle; cell_idx < mesh.jmax + 1; ++cell_idx) {
 
-		double temp_init = 800;
+		double temp_init = 500;
 		double mach = std::sqrt(1.4 * 287 * temp_init);
 
 		cell_vec[cell_idx].var_vec(params.vel_idx) = mach * .75; // some subsonic velocity
@@ -68,26 +68,6 @@ void CellStateVars::initializeFlowFieldSuperSonic() {
 	}
 
 	cell_vec[mesh.jmax].Pressure = params.Pback;
-}
-
-void CellStateVars::updatePressureBoundary() {
-	int adjacent_idx = mesh.jmax - 1;
-	int ghost_idx = mesh.jmax + 2;
-
-	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
-
-		cell_vec[ghost_idx].mass_fracs(species_idx) = getMassFrac(adjacent_idx, species_idx);
-	}
-
-	cell_vec[ghost_idx].var_vec(params.vel_idx) = cell_vec[adjacent_idx].var_vec(params.vel_idx);
-	cell_vec[ghost_idx].var_vec(params.T_idx) = cell_vec[adjacent_idx].var_vec(params.T_idx);
-	cell_vec[ghost_idx].var_vec(params.Tv_idx) = cell_vec[adjacent_idx].var_vec(params.Tv_idx);
-
-	cell_vec[mesh.jmax].Rho = calcRhoOutFlow(ghost_idx);
-
-	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
-		cell_vec[ghost_idx].var_vec(species_idx) = getRho(ghost_idx) * getMassFrac(ghost_idx, species_idx);
-	}
 }
 
 double CellStateVars::getRho_s(int cell_idx, int species_idx) const {

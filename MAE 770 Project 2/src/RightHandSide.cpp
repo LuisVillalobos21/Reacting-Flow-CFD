@@ -17,7 +17,7 @@ void CellResiduals::updateRHS() {
 
 	for (int cell_idx = 0; cell_idx < mesh.jmax; ++cell_idx) {
 
-		if (cell_idx == mesh.jmax - 2) {
+		if (cell_idx == mesh.jmax - 1) {
 			cell_flux_vec[cell_idx].vec = calcFluxLDFSS(cell_idx);
 		}
 
@@ -29,10 +29,10 @@ void CellResiduals::updateRHS() {
 
 	for (int cell_idx = 1; cell_idx < mesh.jmax; ++cell_idx) {
 
-		//if (cell_idx == mesh.jmax - 1) {
-		//	cell_res_vec[cell_idx].vec = calcResidual(cell_idx);
-		//	cell_res_vec[cell_idx].vec(params.vel_idx) -= calcQuasi_1DPressure(cell_idx);
-		//}
+		if (cell_idx == mesh.jmax - 1) {
+			cell_res_vec[cell_idx].vec = calcResidual(cell_idx);
+			cell_res_vec[cell_idx].vec(params.vel_idx) -= calcQuasi_1DPressure(cell_idx);
+		}
 		
 		cell_res_vec[cell_idx].vec = calcResidual(cell_idx);
 

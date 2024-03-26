@@ -30,8 +30,6 @@ struct CellStateVars {
 
     void initializeFlowFieldSuperSonic();
 
-    void CellStateVars::updatePressureBoundary();
-
     double getRho_s(int cell_idx, int species_idx) const;
 
     double getMassFrac(int cell_idx, int species_idx) const;
