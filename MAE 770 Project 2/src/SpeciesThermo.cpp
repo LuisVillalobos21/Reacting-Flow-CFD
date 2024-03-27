@@ -66,9 +66,17 @@ void SpeciesThermo::readSpeciesData(const std::string& filename) {
 }
 
 double SpeciesThermo::calcPolyEnthalpy(const Eigen::MatrixXd& coeffs, double temp) const {
+    double temp2 = temp * temp;   
+    double temp3 = temp2 * temp; 
+    double temp4 = temp3 * temp;  
+    double temp5 = temp4 * temp; 
 
-    return (R_U / molecular_weight) * (coeffs(0) * temp + 0.5 * coeffs(1) * pow(temp, 2.0) + (1.0 / 3.0) * coeffs(2) * pow(temp, 3.0) +
-        0.25 * coeffs(3) * pow(temp, 4.0) + 0.2 * coeffs(4) * pow(temp, 5.0) + coeffs(5));
+    return (R_U / molecular_weight) * (coeffs(0) * temp +
+        0.5 * coeffs(1) * temp2 +
+        (1.0 / 3.0) * coeffs(2) * temp3 +
+        0.25 * coeffs(3) * temp4 +
+        0.2 * coeffs(4) * temp5 +
+        coeffs(5));
 }
 
 double SpeciesThermo::calcPolyEnthalpyTR(double temp) const {
@@ -151,9 +159,14 @@ double SpeciesThermo::calcCV_tr(double temp) const{
 }
 
 double SpeciesThermo::calcPolyCV_V(const Eigen::MatrixXd& coeffs, double temp) const {
+    double temp2 = temp * temp;   // temp^2
+    double temp3 = temp2 * temp;  // temp^3
+    double temp4 = temp3 * temp;  // temp^4
 
-    return (R_U / molecular_weight) * (coeffs(1) * pow(temp, 1.0) + coeffs(2) * pow(temp, 2.0) +
-        coeffs(3) * pow(temp, 3.0) + coeffs(4) * pow(temp, 4.0));
+    return (R_U / molecular_weight) * (coeffs(1) * temp +
+        coeffs(2) * temp2 +
+        coeffs(3) * temp3 +
+        coeffs(4) * temp4);
 }
 
 double SpeciesThermo::calcCV_V(double temp) const {

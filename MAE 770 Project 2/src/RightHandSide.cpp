@@ -17,9 +17,9 @@ void CellResiduals::updateRHS() {
 
 	for (int cell_idx = 0; cell_idx < mesh.jmax; ++cell_idx) {
 
-		if (cell_idx == mesh.jmax - 1) {
-			cell_flux_vec[cell_idx].vec = calcFluxLDFSS(cell_idx);
-		}
+		//if (cell_idx == mesh.jmax - 1) {
+		//	cell_flux_vec[cell_idx].vec = calcFluxLDFSS(cell_idx);
+		//}
 
 		cell_flux_vec[cell_idx].vec = calcFluxLDFSS(cell_idx);
 
@@ -29,10 +29,10 @@ void CellResiduals::updateRHS() {
 
 	for (int cell_idx = 1; cell_idx < mesh.jmax; ++cell_idx) {
 
-		if (cell_idx == mesh.jmax - 1) {
-			cell_res_vec[cell_idx].vec = calcResidual(cell_idx);
-			cell_res_vec[cell_idx].vec(params.vel_idx) -= calcQuasi_1DPressure(cell_idx);
-		}
+		//if (cell_idx == mesh.jmax - 1) {
+		//	cell_res_vec[cell_idx].vec = calcResidual(cell_idx);
+		//	cell_res_vec[cell_idx].vec(params.vel_idx) -= calcQuasi_1DPressure(cell_idx);
+		//}
 		
 		cell_res_vec[cell_idx].vec = calcResidual(cell_idx);
 
@@ -70,11 +70,11 @@ Eigen::VectorXd CellResiduals::calcFluxLDFSS(int cell_idx) const {
 	double btl = -std::max(0.0, 1.0 - static_cast<double>(static_cast<int>(std::abs(xml))));
 	double btr = -std::max(0.0, 1.0 - static_cast<double>(static_cast<int>(std::abs(xmr))));
 
-	double xmml = 0.25 * std::pow(xml + 1.0, 2);
-	double xmmr = -0.25 * std::pow(xmr - 1.0, 2);
+	double xmml = 0.25 * (xml + 1.0) * (xml + 1.0); 
+	double xmmr = -0.25 * (xmr - 1.0) * (xmr - 1.0); 
 
-	double xmhalf = std::sqrt(0.5 * (xml * xml + xmr * xmr));
-	double xmc = 0.25 * btl * btr * std::pow(xmhalf - 1.0, 2);
+	double xmhalf = std::sqrt(0.5 * (xml * xml + xmr * xmr)); 
+	double xmc = 0.25 * btl * btr * (xmhalf - 1.0) * (xmhalf - 1.0); 
 
 	double Pl = state.getPressure(cell_idx);
 	double Pr = state.getPressure(cell_idx + 1);
@@ -91,8 +91,8 @@ Eigen::VectorXd CellResiduals::calcFluxLDFSS(int cell_idx) const {
 	double fml = mesh.getFaceArea1D(cell_idx) * state.getRho(cell_idx) * ahalf * cep;
 	double fmr = mesh.getFaceArea1D(cell_idx) * state.getRho(cell_idx + 1) * ahalf * cem;
 
-	double ppl = 0.25 * std::pow(xml + 1.0, 2) * (2.0 - xml);
-	double ppr = 0.25 * std::pow(xmr - 1.0, 2) * (2.0 + xmr);
+	double ppl = 0.25 * (xml + 1.0) * (xml + 1.0) * (2.0 - xml);
+	double ppr = 0.25 * (xmr - 1.0) * (xmr - 1.0) * (2.0 + xmr);
 
 	double pnet = (all * (1.0 + btl) - btl * ppl) * Pl + (alr * (1.0 + btr) - btr * ppr) * Pr;
 

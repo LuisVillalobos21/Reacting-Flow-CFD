@@ -89,6 +89,7 @@ int main() {
 
     PP.writeDataToFile(params.vel_idx, "soln_vel.dat");
     PP.writeDataToFile(params.T_idx, "soln_temp.dat");
+    PP.writeDataToFile(params.Tv_idx, "soln_tempV.dat");
     PP.writeDataToFile(-1, "soln_pressure.dat");
     PP.writeDataToFile(-2, "soln_density.dat");
     PP.writeDataToFile(-3, "soln_species_densities.dat");

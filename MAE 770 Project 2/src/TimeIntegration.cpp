@@ -111,6 +111,6 @@ void TimeEvolveSolution::solve() {
 		updateDerivedVars();
 		updatePressureBoundary(mesh.jmax);
 
-		std::cout << "Current time step: " << step + 1 << '\n';
+		//std::cout << "Current time step: " << step + 1 << '\n';
 	}
 }
