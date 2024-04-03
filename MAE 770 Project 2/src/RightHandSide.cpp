@@ -6,10 +6,12 @@ VariableVector::VariableVector(const SimParameters& params) {
 	vec = Eigen::VectorXd::Zero(params.nvariables);
 }
 
-CellResiduals::CellResiduals(const SimParameters& params, const Mesh& mesh, const CellStateVars& state)
-	: params(params), mesh(mesh), state(state) {
+CellResiduals::CellResiduals(const SimParameters& params, const Mesh& mesh, const Species& species, const CellStateVars& state)
+	: params(params), mesh(mesh), state(state), species(species) {
 
 	cell_flux_vec.resize(mesh.jmax + 1, VariableVector(params));
+	cell_src_vec.resize(mesh.jmax + 1, VariableVector(params));
+	cell_q1D_vec.resize(mesh.jmax + 1, VariableVector(params));
 	cell_res_vec.resize(mesh.jmax + 1, VariableVector(params));
 }
 
@@ -17,36 +19,20 @@ void CellResiduals::updateRHS() {
 
 	for (int cell_idx = 0; cell_idx < mesh.jmax; ++cell_idx) {
 
-		//if (cell_idx == mesh.jmax - 1) {
-		//	cell_flux_vec[cell_idx].vec = calcFluxLDFSS(cell_idx);
-		//}
-
-		cell_flux_vec[cell_idx].vec = calcFluxLDFSS(cell_idx);
-
-		//std::cout << "Flux vector for face " << cell_idx << '\n';
-		//std::cout << cell_flux_vec[cell_idx].vec << '\n';
+		cell_flux_vec[cell_idx].vec = calcFaceFluxLDFSS(cell_idx);
 	}
 
 	for (int cell_idx = 1; cell_idx < mesh.jmax; ++cell_idx) {
 
-		//if (cell_idx == mesh.jmax - 1) {
-		//	cell_res_vec[cell_idx].vec = calcResidual(cell_idx);
-		//	cell_res_vec[cell_idx].vec(params.vel_idx) -= calcQuasi_1DPressure(cell_idx);
-		//}
-		
-		cell_res_vec[cell_idx].vec = calcResidual(cell_idx);
+		cell_res_vec[cell_idx].vec = -calcFluxVec(cell_idx);
 
-		//std::cout << "Res vector for cell " << cell_idx << '\n';
-		//std::cout << cell_flux_vec[cell_idx].vec << '\n';
+		cell_res_vec[cell_idx].vec += calcQ1DVec(cell_idx);
 
-		cell_res_vec[cell_idx].vec(params.vel_idx) -= calcQuasi_1DPressure(cell_idx);
-
-		//std::cout << "Quasi 1D pressure contriubtion (negative)" << '\n';
-		//std::cout << -calcQuasi_1DPressure(cell_idx) << '\n';
+		cell_res_vec[cell_idx].vec += calcSrcVec(cell_idx);
 	}
 }
-
-Eigen::VectorXd CellResiduals::calcResidual(int cell_idx) const {
+ 
+Eigen::VectorXd CellResiduals::calcFluxVec(int cell_idx) {
 
 	double dx = mesh.getCelldx1D(cell_idx);
 	Eigen::VectorXd right_flux = cell_flux_vec[cell_idx].vec;
@@ -54,7 +40,24 @@ Eigen::VectorXd CellResiduals::calcResidual(int cell_idx) const {
 	return (right_flux - left_flux) / dx;
 }
 
-Eigen::VectorXd CellResiduals::calcFluxLDFSS(int cell_idx) const {
+Eigen::VectorXd CellResiduals::calcQ1DVec(int cell_idx) {
+
+	Eigen::VectorXd q1D_vec = Eigen::VectorXd::Zero(params.nvariables);
+	q1D_vec(params.vel_idx) += calcQuasi_1DPressure(cell_idx);
+
+	return q1D_vec;
+}
+
+Eigen::VectorXd CellResiduals::calcSrcVec(int cell_idx) {
+
+	Eigen::VectorXd src_vec = Eigen::VectorXd::Zero(params.nvariables);
+	src_vec(params.Tv_idx) += calcRelaxSrcTerm(cell_idx);
+
+	return src_vec;
+}
+
+
+Eigen::VectorXd CellResiduals::calcFaceFluxLDFSS(int cell_idx) const {
 	
 	double ahalf = 0.5 * (state.getSoundSpeed(cell_idx) + state.getSoundSpeed(cell_idx + 1));
 
@@ -113,4 +116,26 @@ double CellResiduals::calcQuasi_1DPressure(int cell_idx) const {
 	double dx = mesh.getCelldx1D(cell_idx);
 
 	return pressure * (face_area_r - face_area_l) / dx;
+}
+
+double CellResiduals::calcRelaxSrcTerm(int cell_idx) const {
+
+	double value = 0.0;
+
+	double temp_tr = state.getTemp(cell_idx);
+	double temp_V = state.getTemp_V(cell_idx);
+
+	for (int idx = 0; idx < params.nspecies_vib; ++idx) {
+
+		int vib_idx = params.vib_idxs(idx);
+
+		double rho_s = state.getRho_s(cell_idx, vib_idx);
+		double ev_tr = species.getIntEnergyV(vib_idx, temp_tr);
+		double ev_v = species.getIntEnergyV(vib_idx, temp_V);
+		double tau = state.calcRelaxTime(cell_idx, vib_idx);
+
+		value += rho_s * (ev_tr - ev_v) / tau;
+	}
+
+	return value;
 }

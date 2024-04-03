@@ -11,20 +11,31 @@ struct VariableVector {
 struct CellResiduals {
 
 	std::vector<VariableVector> cell_flux_vec;
+	std::vector<VariableVector> cell_src_vec;
+	std::vector<VariableVector> cell_q1D_vec;
 	std::vector<VariableVector> cell_res_vec;
 
 	const SimParameters& params;
 	const CellStateVars& state;
 	const Mesh& mesh;
+	const Species& species;
 
-	CellResiduals(const SimParameters& params, const Mesh& mesh, const CellStateVars& state);
+	CellResiduals(const SimParameters& params, const Mesh& mesh, const Species& species, const CellStateVars& state);
 
 	void updateRHS();
 
-	Eigen::VectorXd calcResidual(int cell_idx) const;
+	Eigen::VectorXd calcFluxVec(int cell_idx);
 
-	Eigen::VectorXd calcFluxLDFSS(int cell_idx) const;
+	Eigen::VectorXd calcQ1DVec(int cell_idx);
+
+	Eigen::VectorXd calcSrcVec(int cell_idx);
+
+	Eigen::VectorXd calcFaceFluxLDFSS(int cell_idx) const;
+
+	double calcRelaxSrcTerm(int cell_idx) const;
 
 	double calcQuasi_1DPressure(int cell_idx) const;
+
+
 };
  

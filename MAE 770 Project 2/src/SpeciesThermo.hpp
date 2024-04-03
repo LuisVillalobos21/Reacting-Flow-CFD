@@ -4,12 +4,14 @@
 
 struct SpeciesThermo {
 
+    Eigen::VectorXd coeff_high;
+    Eigen::VectorXd coeff_low;
+    double A_low, B_low, C_low, D_low, E_low, F_low, G_low;
+    double A_high, B_high, C_high, D_high, E_high, F_high, G_high;
     double molecular_weight;
     double h_ref;
     double lowT;
     double highT;
-    Eigen::VectorXd coeff_high;
-    Eigen::VectorXd coeff_low;
     double temp_ref = 298.15;
     double h_formation;
     double e_formation;
@@ -69,6 +71,8 @@ struct Species {
     double getCV_V(int species_idx, double temp) const;
 
     double getR_s(int species_idx) const;
+
+    double getMw(int species_idx) const;
 
     double getIntEnergyTR(int species_idx, double temp_tr) const;
 

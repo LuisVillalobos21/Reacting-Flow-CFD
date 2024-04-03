@@ -65,4 +65,12 @@ struct CellStateVars {
     double calcTotalEnergy(int cell_idx) const;
 
     Eigen::VectorXd getFluxVars(int cell_idx) const;
+
+    double calcReducedMw(int cell_idx, int species_idx1, int species_idx2) const;
+
+    double calcA_relax(int cell_idx, int species_idx1, int species_idx2) const;
+
+    double calcB_relax(int cell_idx, int species_idx1, int species_idx2) const;
+
+    double calcRelaxTime(int cell_idx, int species_vib) const;
 };

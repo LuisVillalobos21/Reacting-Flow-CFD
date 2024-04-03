@@ -30,7 +30,7 @@ include_directories(${CMAKE_SOURCE_DIR}/common)
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
 # Create an executable with all source files
-add_executable(NOZZLE 
+add_executable(SOLVER 
   src/main.cpp  
   src/WriteData.cpp 
   src/MeshProccessing.cpp 

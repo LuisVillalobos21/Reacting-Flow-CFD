@@ -3,6 +3,9 @@
 
 LHS::LHS(const SimParameters& params) {
 
+	prim_var_jac = Eigen::MatrixXd::Zero(params.nvariables, params.nvariables);
+	src_term_jac = Eigen::MatrixXd::Zero(params.nvariables, params.nvariables);
+	quasi_1D_jac = Eigen::MatrixXd::Zero(params.nvariables, params.nvariables);
 	matrix = Eigen::MatrixXd::Zero(params.nvariables, params.nvariables);
 }
 
@@ -23,32 +26,40 @@ void CellJacobians::updateLHS() {
 
 	for (int cell_idx = 1; cell_idx < mesh.jmax; ++cell_idx) {
 
-		cell_vec[cell_idx].matrix.setZero();
-		cell_vec[cell_idx].matrix.diagonal().head(params.nspecies).setOnes();
-		cell_vec[cell_idx].matrix(params.vel_idx, params.vel_idx) = state.getRho(cell_idx);
-
-		for (int dim = 0; dim < params.ndimension; ++dim) {
-
-			double vel = state.getVel_components(cell_idx)(dim);
-
-			cell_vec[cell_idx].matrix.block(params.vel_idx, 0, 1, params.nspecies) =
-				vel * Eigen::RowVectorXd::Ones(params.nspecies);
-		}
-
 		calcPrimVarJacobian(cell_idx);
 
-		//std::cout << "matrix before multipled by cell area: " << '\n';
-		//std::cout << cell_vec[cell_idx].matrix << '\n';
+		cell_vec[cell_idx].prim_var_jac *= mesh.getCellArea1D(cell_idx);
 
-		cell_vec[cell_idx].matrix *= mesh.getCellArea1D(cell_idx);
+		calcQuasi1DJacobian(cell_idx);
 
-		//std::cout << "cell area: " << mesh.getCellArea1D(cell_idx) << '\n';
-		//std::cout << cell_vec[cell_idx].matrix << '\n';
+		calcSrcTermJacobian(cell_idx);
 
+		cell_vec[cell_idx].src_term_jac *= mesh.getCellArea1D(cell_idx);
+	}
+}
+
+void CellJacobians::addJacobians() {
+
+	for (int cell_idx = 1; cell_idx < mesh.jmax; ++cell_idx) {
+
+		cell_vec[cell_idx].matrix = cell_vec[cell_idx].prim_var_jac - cell_vec[cell_idx].src_term_jac - 
+			cell_vec[cell_idx].quasi_1D_jac;
 	}
 }
 
 void CellJacobians::calcPrimVarJacobian(int cell_idx) {
+
+	cell_vec[cell_idx].prim_var_jac.setZero();
+	cell_vec[cell_idx].prim_var_jac.diagonal().head(params.nspecies).setOnes();
+	cell_vec[cell_idx].prim_var_jac(params.vel_idx, params.vel_idx) = state.getRho(cell_idx);
+
+	for (int dim = 0; dim < params.ndimension; ++dim) {
+
+		double vel = state.getVel_components(cell_idx)(dim);
+
+		cell_vec[cell_idx].prim_var_jac.block(params.vel_idx, 0, 1, params.nspecies) =
+			vel * Eigen::RowVectorXd::Ones(params.nspecies);
+	}
 
 	calcPartial_Et_RhoS(cell_idx);
 	calcPartial_Et_u(cell_idx);
@@ -75,7 +86,7 @@ void CellJacobians::calcPartial_Et_RhoS(int cell_idx) {
 		jacobian_value += state.getKineticEnergy(cell_idx) / state.getRho(cell_idx);
 		jacobian_value += species.getIntEnergyV(species_idx, temp_V);
 
-		cell_vec[cell_idx].matrix(row_idx, col_idx) += jacobian_value;
+		cell_vec[cell_idx].prim_var_jac(row_idx, col_idx) += jacobian_value;
 	}
 }
 
@@ -90,7 +101,7 @@ void CellJacobians::calcPartial_Et_u(int cell_idx) {
 
 		int col_idx = params.vel_idx + i;
 
-		cell_vec[cell_idx].matrix(row_idx, col_idx) += rho * vel_components(i); // no longer multipled by 1000
+		cell_vec[cell_idx].prim_var_jac(row_idx, col_idx) += rho * vel_components(i); // no longer multipled by 1000
 	}
 }
 
@@ -110,7 +121,7 @@ void CellJacobians::calcPartial_Et_T_tr(int cell_idx) {
 		jacobian_value += rho_s * CV;
 	}
 
-	cell_vec[cell_idx].matrix(row_idx, col_idx) += jacobian_value;
+	cell_vec[cell_idx].prim_var_jac(row_idx, col_idx) += jacobian_value;
 }
 
 void CellJacobians::calcPartial_Et_Tv(int cell_idx) {
@@ -129,7 +140,7 @@ void CellJacobians::calcPartial_Et_Tv(int cell_idx) {
 		jacobian_value += rho_s * CV_V;
 	}
 
-	cell_vec[cell_idx].matrix(row_idx, col_idx) += jacobian_value;
+	cell_vec[cell_idx].prim_var_jac(row_idx, col_idx) += jacobian_value;
 }
 
 void CellJacobians::calcPartial_Ev_RhoS(int cell_idx) {
@@ -141,7 +152,7 @@ void CellJacobians::calcPartial_Ev_RhoS(int cell_idx) {
 	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
 
 		int col_idx = species_idx;
-		cell_vec[cell_idx].matrix(row_idx, col_idx) += species.getIntEnergyV(species_idx, temp_V);
+		cell_vec[cell_idx].prim_var_jac(row_idx, col_idx) += species.getIntEnergyV(species_idx, temp_V);
 	}
 }
 
@@ -161,7 +172,104 @@ void CellJacobians::calcPartial_Ev_Tv(int cell_idx) {
 		jacobian_value += rho_s * CV_V;
 	}
 
-	cell_vec[cell_idx].matrix(row_idx, col_idx) += jacobian_value;
+	cell_vec[cell_idx].prim_var_jac(row_idx, col_idx) += jacobian_value;
 }
 
+void CellJacobians::calcQuasi1DJacobian(int cell_idx) {
+
+	cell_vec[cell_idx].quasi_1D_jac.setZero();
+	calcPartial_Quasi_RhoS(cell_idx);
+	calcPartial_Quasi_T_tr(cell_idx);
+}
+
+void CellJacobians::calcPartial_Quasi_RhoS(int cell_idx) {
+
+	double temp = state.getTemp(cell_idx);
+
+	double face_area_l = mesh.getFaceArea1D(cell_idx - 1);
+	double face_area_r = mesh.getFaceArea1D(cell_idx);
+	double dx = mesh.getCelldx1D(cell_idx);
+	double dA_dx = (face_area_r - face_area_l) / dx;
+
+	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+
+		int row_idx = params.vel_idx;
+		int col_idx = species_idx;
+
+		double jacobian_value = 0.0;
+
+		jacobian_value = species.getR_s(species_idx) * temp * dA_dx;
+
+		cell_vec[cell_idx].quasi_1D_jac(row_idx, col_idx) = jacobian_value;
+	}
+}
+
+void CellJacobians::calcPartial_Quasi_T_tr(int cell_idx) {
+
+	int row_idx = params.vel_idx;
+	int col_idx = params.T_idx;
+
+	double face_area_l = mesh.getFaceArea1D(cell_idx - 1);
+	double face_area_r = mesh.getFaceArea1D(cell_idx);
+	double dx = mesh.getCelldx1D(cell_idx);
+	double dA_dx = (face_area_r - face_area_l) / dx;
+
+	double jacobian_value = 0.0;
+
+	double rhos_Rs = state.getRhoR_Mix(cell_idx);
+	jacobian_value = rhos_Rs * dA_dx;
+
+	cell_vec[cell_idx].quasi_1D_jac(row_idx, col_idx) = jacobian_value;
+}
+
+void CellJacobians::calcSrcTermJacobian(int cell_idx) {
+
+	calcPartial_Relax_T_tr(cell_idx);
+	calcPartial_Relax_T_v(cell_idx);
+}
+
+
+void CellJacobians::calcPartial_Relax_T_tr(int cell_idx) {
+
+	int row_idx = params.Tv_idx;
+	int col_idx = params.T_idx;
+
+	double jacobian_value = 0.0;
+	double temp_tr = state.getTemp(cell_idx);
+
+	for (int idx = 0; idx < params.nspecies_vib; ++idx) {
+
+		int vib_idx = params.vib_idxs(idx);
+
+		double rho_s = state.getRho_s(cell_idx, vib_idx);
+		double tau = state.calcRelaxTime(cell_idx, vib_idx);
+		double CVe_T = species.getCV_V(vib_idx, temp_tr);
+
+		jacobian_value += rho_s * CVe_T / tau;
+	}
+
+	cell_vec[cell_idx].src_term_jac(row_idx, col_idx) = jacobian_value;
+}
+
+void CellJacobians::calcPartial_Relax_T_v(int cell_idx) {
+
+	int row_idx = params.Tv_idx;
+	int col_idx = params.Tv_idx;
+
+	double jacobian_value = 0.0;
+	double temp_V = state.getTemp_V(cell_idx);
+
+	for (int idx = 0; idx < params.nspecies_vib; ++idx) {
+
+		int vib_idx = params.vib_idxs(idx);
+
+		double rho_s = state.getRho_s(cell_idx, vib_idx);
+		double tau = state.calcRelaxTime(cell_idx, vib_idx);
+		double CVe_T = species.getCV_V(vib_idx, temp_V);
+
+		jacobian_value += rho_s * CVe_T / tau;
+	}
+
+	cell_vec[cell_idx].src_term_jac(row_idx, col_idx) = -jacobian_value;
+}
 

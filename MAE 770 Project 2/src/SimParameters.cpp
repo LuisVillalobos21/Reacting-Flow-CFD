@@ -50,12 +50,43 @@ void SimParameters::readInputFile(const std::string& filename) {
 				}
 			}
 		}
+		else if (keyword == "NUMBER_VIB_SPECIES") {
+			if (!(iss >> nspecies_vib)) {
+				std::cerr << "ERROR: Invalid NUMBER_VIB_SPECIES value" << std::endl;
+				continue;
+			}
+		}
+		else if (keyword == "VIB_SPECIES_IDX") {
+			vib_idxs.resize(nspecies_vib); 
+			for (int i = 0; i < nspecies_vib; ++i) {
+				if (!(iss >> vib_idxs(i))) {
+					std::cerr << "ERROR: Invalid VIB_SPECIES_IDX value" << std::endl;
+					break;
+				}
+				vib_idxs(i) -= 1;
+			}
+		}
+		else if (keyword == "CHARACT_TEMPS_VIB") {
+			charact_temps_vib.resize(nspecies_vib); 
+			for (int i = 0; i < nspecies_vib; ++i) {
+				if (!(iss >> charact_temps_vib(i))) {
+					std::cerr << "ERROR: Invalid CHARACT_TEMPS_VIB value" << std::endl;
+					break;
+				}
+			}
+		}
+
 		else if (keyword == "SPECIES_THERMO_DATA") {
 			getline(inputFile, speciesThermoDataPath); // Assuming the path is on the next line
 		}
 		else if (keyword == "CFL") {
 			if (!(iss >> CFL)) {
 				std::cerr << "ERROR: Invalid CFL value" << std::endl;
+			}
+		}
+		else if (keyword == "RELATIVE_TOLERANCE") {
+			if (!(iss >> rel_tol)) {
+				std::cerr << "ERROR: Invalid RELATIVE_TOLERANCE value" << std::endl;
 			}
 		}
 		else if (keyword == "NUM_TIME_STEPS") {

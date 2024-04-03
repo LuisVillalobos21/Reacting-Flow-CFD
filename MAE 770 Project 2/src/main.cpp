@@ -29,7 +29,7 @@ struct PostProcess {
             for (int cell_idx = 0; cell_idx < mesh.jmax + 1; ++cell_idx) {
                 outFile << state.getPressure(cell_idx) << '\n';
             }
-            std::cout << "Data written to " << filename << '\n';
+            std::cout << "Pressure data written to " << filename << '\n';
             return;
         }
 
@@ -37,7 +37,7 @@ struct PostProcess {
             for (int cell_idx = 0; cell_idx < mesh.jmax + 1; ++cell_idx) {
                 outFile << state.getRho(cell_idx) << '\n';
             }
-            std::cout << "Data written to " << filename << '\n';
+            std::cout << "Mixture density data written to " << filename << '\n';
             return;
         }
 
@@ -55,7 +55,7 @@ struct PostProcess {
                     }
                 }
             }
-            std::cout << "Data written to " << filename << '\n';
+            std::cout << "Species densities written to " << filename << '\n';
             return;
         }
 
@@ -65,7 +65,8 @@ struct PostProcess {
         }
 
         outFile.close();
-        std::cout << "Data written to " << filename << '\n';
+
+        std::cout << "Working variables written to " << filename << '\n';
     }
 };
 
@@ -77,9 +78,17 @@ int main() {
 
     std::string inputfilepath = "C:\\Users\\luis2\\Documents\\MAE 770\\Project 2\\simple_input.dat";
 
+    std::cout << "Reading in file: " << inputfilepath << '\n' << '\n';
+
     SimParameters params(inputfilepath, mesh, species);
 
+    std::cout << "Preprocessing complete" << '\n' << '\n';
+
     CellStateVars state(params, mesh, species);
+
+    std::cout << "Flow initalized" << '\n' << '\n';
+
+    std::cout << "Solving..." << '\n' << '\n';
 
     TimeEvolveSolution evolve(params, mesh, species, state);
 
@@ -87,12 +96,19 @@ int main() {
 
     PostProcess PP(params, mesh, state);
 
+    std::cout << "Postprocessing complete" << '\n' << '\n';
+
     PP.writeDataToFile(params.vel_idx, "soln_vel.dat");
     PP.writeDataToFile(params.T_idx, "soln_temp.dat");
     PP.writeDataToFile(params.Tv_idx, "soln_tempV.dat");
     PP.writeDataToFile(-1, "soln_pressure.dat");
     PP.writeDataToFile(-2, "soln_density.dat");
     PP.writeDataToFile(-3, "soln_species_densities.dat");
+
+    std::cout << '\n';
+
+    std::cout << "Press ENTER to continue...";
+    std::cin.get();
 
     return 0;
 }

@@ -12,11 +12,16 @@ struct SimParameters {
     int T_idx;
     int Tv_idx;
 
+    int nspecies_vib;
+    Eigen::VectorXi vib_idxs;
+    Eigen::VectorXd charact_temps_vib;
+
     std::string gridPath;
     std::string speciesThermoDataPath;
 
     int num_time_steps;
     double CFL;
+    double rel_tol;
     double ref_velocity;
     double ref_temperature;
     double ref_mixture_rho;
