@@ -1,11 +1,9 @@
 #include "SimParameters.hpp"
 
-SimParameters::SimParameters(const std::string& filename, Mesh& mesh, Species& species)
+SimParameters::SimParameters(const std::string& filename)
 	: ndimension(0), nspecies(0), nvariables(0) {
 
 	readInputFile(filename);
-	mesh.processMesh(gridPath);
-	species.readSpeciesInput(speciesThermoDataPath);
 
 	nvariables = nspecies + ndimension + 2;
 	vel_idx = nspecies;
@@ -79,6 +77,11 @@ void SimParameters::readInputFile(const std::string& filename) {
 		else if (keyword == "SPECIES_THERMO_DATA") {
 			getline(inputFile, speciesThermoDataPath); // Assuming the path is on the next line
 		}
+
+		else if (keyword == "REACTIONS_PATH") {
+			getline(inputFile, reactionPath); // Assuming the path is on the next line
+		}
+
 		else if (keyword == "CFL") {
 			if (!(iss >> CFL)) {
 				std::cerr << "ERROR: Invalid CFL value" << std::endl;

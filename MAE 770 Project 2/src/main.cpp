@@ -6,7 +6,7 @@
 #include "BuildCellJacobians.hpp"
 #include "RightHandSide.hpp"
 #include "TimeIntegration.hpp"
-
+#include "Chemistry.hpp"
 
 struct PostProcess {
 
@@ -72,15 +72,17 @@ struct PostProcess {
 
 int main() {
 
-    Mesh mesh;
-
-    Species species;
-
     std::string inputfilepath = "C:\\Users\\luis2\\Documents\\MAE 770\\Project 2\\simple_input.dat";
 
     std::cout << "Reading in file: " << inputfilepath << '\n' << '\n';
 
-    SimParameters params(inputfilepath, mesh, species);
+    SimParameters params(inputfilepath);
+
+    Mesh mesh(params.gridPath);
+
+    Species species(params.speciesThermoDataPath);
+
+    Chemistry chem(params.reactionPath, params);
 
     std::cout << "Preprocessing complete" << '\n' << '\n';
 

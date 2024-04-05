@@ -26,6 +26,8 @@ struct Mesh {
     std::vector<std::vector<Cell>> cell_data;
     std::vector<std::vector<Face>> face_data;
 
+    Mesh(const std::string& filename);
+
     void processMesh(const std::string& filename);
 
     void readMesh(const std::string& filename);

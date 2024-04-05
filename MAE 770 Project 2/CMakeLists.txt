@@ -40,4 +40,4 @@ add_executable(SOLVER
   src/BuildCellJacobians.cpp 
   src/RightHandSide.cpp 
   src/TimeIntegration.cpp
-)
+ "src/Chemistry.cpp")

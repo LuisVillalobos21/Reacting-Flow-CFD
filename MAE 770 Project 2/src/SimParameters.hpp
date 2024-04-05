@@ -18,6 +18,7 @@ struct SimParameters {
 
     std::string gridPath;
     std::string speciesThermoDataPath;
+    std::string reactionPath;
 
     int num_time_steps;
     double CFL;
@@ -29,7 +30,7 @@ struct SimParameters {
     Eigen::VectorXd ref_species_mass_frac;
     Eigen::VectorXd ref_rho_s;
 
-    SimParameters(const std::string& filename, Mesh& mesh, Species& species);
+    SimParameters(const std::string& filename);
 
     void readInputFile(const std::string& filename);
 };

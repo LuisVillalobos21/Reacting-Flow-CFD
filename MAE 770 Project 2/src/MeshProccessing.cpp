@@ -1,6 +1,10 @@
 #include "ProjectIncludes.hpp"
 #include "MeshProccesing.hpp"
 
+Mesh::Mesh(const std::string& filename) {
+    processMesh(filename);
+}
+
 void Mesh::processMesh(const std::string& filename) {
 
     readMesh(filename);
@@ -10,8 +14,6 @@ void Mesh::processMesh(const std::string& filename) {
 }
 
 void Mesh::readMesh(const std::string& filename) {
-
-    // acts sort of like a constructor
 
     std::ifstream file(filename);
     if (!file.is_open()) {

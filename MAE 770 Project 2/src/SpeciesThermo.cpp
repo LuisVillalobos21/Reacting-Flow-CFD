@@ -256,6 +256,11 @@ void SpeciesThermo::printSpeciesThermoData() {
 
 // SPECIES STRUCT
 
+Species::Species(const std::string& filename) {
+
+    readSpeciesInput(filename);
+}
+
 void Species::readSpeciesInput(const std::string& filename) {
     std::ifstream inputFile(filename);
     if (!inputFile.is_open()) {

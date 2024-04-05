@@ -62,6 +62,8 @@ struct SpeciesThermo {
 
 struct Species {
 
+    Species(const std::string& filename);
+
     std::vector<SpeciesThermo> species_vector;
 
     void readSpeciesInput(const std::string& filename);
