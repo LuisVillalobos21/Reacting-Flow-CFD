@@ -254,11 +254,11 @@ double CellStateVars::calcReducedMw(int cell_idx, int species_idx1, int species_
 	return (Wm * Wn) / (Wm + Wn);
 }
 
-double CellStateVars::calcA_relax(int cell_idx, int species_idx1, int species_idx2) const {
+double CellStateVars::calcA_relax(int cell_idx, int species_idx1, int species_idx2, int idx) const {
 
 	double mu = calcReducedMw(cell_idx, species_idx1, species_idx2);
 	double mu_root = std::sqrt(mu);
-	double theta_v_m = params.charact_temps_vib(species_idx2);
+	double theta_v_m = params.charact_temps_vib(idx);
 
 	double theta_v_m_cbrt = std::cbrt(theta_v_m);
 	double theta_v_m_4_3 = theta_v_m_cbrt * theta_v_m_cbrt * theta_v_m_cbrt * theta_v_m_cbrt;
@@ -274,7 +274,7 @@ double CellStateVars::calcB_relax(int cell_idx, int species_idx1, int species_id
 	return 0.015 * mu_root_fourth;
 }
 
-double CellStateVars::calcRelaxTime(int cell_idx, int species_vib) const {
+double CellStateVars::calcRelaxTime(int cell_idx, int species_vib, int idx) const {
 
 	double tau = 0.0;
 	double YnWn = 0.0;
@@ -291,7 +291,7 @@ double CellStateVars::calcRelaxTime(int cell_idx, int species_vib) const {
 
 	for (int species_n = 0; species_n < params.nspecies; ++species_n) {
 
-		double A = calcA_relax(cell_idx, species_n, species_vib);
+		double A = calcA_relax(cell_idx, species_n, species_vib, idx);
 		double B = calcB_relax(cell_idx, species_n, species_vib);
 		term += 1 / exp(A * (1 / std::cbrt(temp_tr) - B) - 18.42);
 	}

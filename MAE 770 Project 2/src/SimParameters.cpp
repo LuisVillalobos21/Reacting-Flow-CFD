@@ -82,6 +82,51 @@ void SimParameters::readInputFile(const std::string& filename) {
 			getline(inputFile, reactionPath); // Assuming the path is on the next line
 		}
 
+		else if (keyword == "NUM_REACTIONS") {
+			if (!(iss >> num_reactions)) {
+				std::cerr << "ERROR: Invalid NUM_REACTIONS value" << std::endl;
+			}
+		}
+
+		else if (keyword == "SPECIES_PROD_COMBO") {
+			spec_react_comp.resize(num_reactions); 
+			for (int r = 0; r < num_reactions; ++r) {
+				if (!getline(inputFile, line)) break; 
+
+				std::istringstream lineStream(line);
+				std::vector<int> tempCombo;
+				int val;
+				while (lineStream >> val) {
+					tempCombo.push_back(val);
+				}
+
+				Eigen::VectorXi combo(tempCombo.size());
+				for (size_t i = 0; i < tempCombo.size(); ++i) {
+					combo[i] = tempCombo[i] - 1;
+				}
+				spec_react_comp[r].type = combo; 
+			}
+		}
+		else if (keyword == "SPECIES_PROD_COEFF") {
+			spec_react_coeff.resize(num_reactions); 
+			for (int r = 0; r < num_reactions; ++r) {
+				if (!getline(inputFile, line)) break; 
+
+				std::istringstream lineStream(line);
+				std::vector<double> tempCoeff;
+				double val;
+				while (lineStream >> val) {
+					tempCoeff.push_back(val);
+				}
+
+				Eigen::VectorXd coeff(tempCoeff.size());
+				for (size_t i = 0; i < tempCoeff.size(); ++i) {
+					coeff[i] = tempCoeff[i];
+				}
+				spec_react_coeff[r].coeff = coeff; 
+			}
+		}
+
 		else if (keyword == "CFL") {
 			if (!(iss >> CFL)) {
 				std::cerr << "ERROR: Invalid CFL value" << std::endl;

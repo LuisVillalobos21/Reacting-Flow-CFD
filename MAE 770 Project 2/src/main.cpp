@@ -82,17 +82,17 @@ int main() {
 
     Species species(params.speciesThermoDataPath);
 
-    Chemistry chem(params.reactionPath, params);
-
     std::cout << "Preprocessing complete" << '\n' << '\n';
 
     CellStateVars state(params, mesh, species);
+
+    Chemistry chem(params.reactionPath, params, species, state);
 
     std::cout << "Flow initalized" << '\n' << '\n';
 
     std::cout << "Solving..." << '\n' << '\n';
 
-    TimeEvolveSolution evolve(params, mesh, species, state);
+    TimeEvolveSolution evolve(params, mesh, species, state, chem);
 
     evolve.solve();
 

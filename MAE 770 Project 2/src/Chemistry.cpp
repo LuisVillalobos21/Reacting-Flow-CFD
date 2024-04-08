@@ -9,12 +9,12 @@ Reaction::Reaction(const std::string& filepath, const SimParameters& params)
 Eigen::VectorXi Reaction::readVector(std::ifstream& inputFile, int count) {
     Eigen::VectorXi values(count);
     for (int i = 0; i < count; ++i) {
-        double tempValue; // Temporary variable to store the input
+        int tempValue; // Temporary variable to store the input
         if (!(inputFile >> tempValue)) {
             std::cerr << "ERROR: Invalid coefficient/index value" << std::endl;
             break;
         }
-        values(i) = tempValue; // Assign the read value to the Eigen vector
+        values(i) = tempValue - 1; // Assign the read value to the Eigen vector
     }
     return values;
 }
@@ -142,8 +142,16 @@ double Reaction::calcBackwardRate(double temp) const {
     return k_f / k_eq;
 }
 
-Chemistry::Chemistry(const std::string& inputListFile, const SimParameters& params, const Species& species)
-    :params(params), species(species) {
+
+
+
+
+Chemistry::Chemistry(
+    const std::string& inputListFile, 
+    const SimParameters& params, 
+    const Species& species, 
+    const CellStateVars& state)
+    :params(params), species(species), state(state) {
 
     readReactionInput(inputListFile);
 }
@@ -164,7 +172,7 @@ void Chemistry::readReactionInput(const std::string& filename) {
     inputFile.close();
 }
 
-Eigen::VectorXd Chemistry::calcConcentrations(const Eigen::VectorXd& species_Rho) {
+Eigen::VectorXd Chemistry::calcConcentrations(const Eigen::VectorXd& species_Rho) const{
     Eigen::VectorXd concentrations = Eigen::VectorXd::Zero(params.nspecies);
 
     for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
@@ -176,7 +184,7 @@ Eigen::VectorXd Chemistry::calcConcentrations(const Eigen::VectorXd& species_Rho
     return concentrations;
 }
 
-double Chemistry::calcTBFactor(const Reaction& reaction, const Eigen::VectorXd& concentrations) {
+double Chemistry::calcTBFactor(const Reaction& reaction, const Eigen::VectorXd& concentrations) const{
     if (reaction.type != ReactionType::Collision) {
         return 1.0; 
     }
@@ -192,7 +200,7 @@ double Chemistry::calcTBFactor(const Reaction& reaction, const Eigen::VectorXd& 
 double Chemistry::calcLawMassAction(
     const Reaction& reaction,
     const Eigen::VectorXd& species_Rho,
-    double temp) {
+    double temp) const{
 
     Eigen::VectorXd concentrations = calcConcentrations(species_Rho);
 
@@ -220,4 +228,25 @@ double Chemistry::calcLawMassAction(
     }
 
     return (k_f * forward_concentration - k_b * backward_concentration) * TB_factor;
+}
+
+double Chemistry::calcSpeciesProduction(int cell_idx, int species_idx) const {
+
+    Eigen::VectorXi idxs = params.spec_react_comp[species_idx].type;
+
+    Eigen::VectorXd rho_vec = state.cell_vec[cell_idx].var_vec.segment(0, params.nspecies);
+
+    double temp_tr = state.getTemp(cell_idx);
+    double temp_V = state.getTemp_V(cell_idx);
+
+    double omega_dot = 0;
+
+    for (int i = 0; i < idxs.size(); ++i) {
+
+        double coeff = params.spec_react_coeff[species_idx].coeff(i);
+
+        omega_dot += coeff * calcLawMassAction(reaction_vec[idxs(i)], rho_vec, temp_tr);
+    }
+
+    return species.getMw(species_idx) * omega_dot;
 }

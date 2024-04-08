@@ -1,6 +1,8 @@
 #pragma once
-#include "SpeciesThermo.hpp"
+#include "ProjectIncludes.hpp"
 #include "SimParameters.hpp"
+#include "SpeciesThermo.hpp"
+#include "CellStateVariables.hpp"
 
 enum class ReactionType {
     Collision,
@@ -49,18 +51,21 @@ struct Chemistry {
 
     const SimParameters& params;
     const Species& species;
+    const CellStateVars& state;
 
-    Chemistry(const std::string& inputListFile, const SimParameters& params, const Species& species);
+    Chemistry(const std::string& inputListFile, const SimParameters& params, const Species& species, const CellStateVars& state);
 
     void readReactionInput(const std::string& filename);
 
-    Eigen::VectorXd calcConcentrations(const Eigen::VectorXd& species_Rho);
+    Eigen::VectorXd calcConcentrations(const Eigen::VectorXd& species_Rho) const;
 
-    double Chemistry::calcTBFactor(const Reaction& reaction, const Eigen::VectorXd& concentrations);
+    double calcTBFactor(const Reaction& reaction, const Eigen::VectorXd& concentrations) const;
 
     double calcLawMassAction(
         const Reaction& reaction,
         const Eigen::VectorXd& species_Rho,
-        double temp);
+        double temp) const;
+
+    double calcSpeciesProduction(int cell_idx, int species_idx) const;
 };
 

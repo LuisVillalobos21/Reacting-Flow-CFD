@@ -1,4 +1,3 @@
-#include "ProjectIncludes.hpp"
 #include "MeshProccesing.hpp"
 
 Mesh::Mesh(const std::string& filename) {

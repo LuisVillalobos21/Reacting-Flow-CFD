@@ -1,5 +1,6 @@
 #pragma once
 #include "CellStateVariables.hpp"
+#include "Chemistry.hpp"
 
 struct VariableVector {
 
@@ -19,16 +20,21 @@ struct CellResiduals {
 	const CellStateVars& state;
 	const Mesh& mesh;
 	const Species& species;
+	const Chemistry& chem;
 
-	CellResiduals(const SimParameters& params, const Mesh& mesh, const Species& species, const CellStateVars& state);
+	CellResiduals(const SimParameters& params, const Mesh& mesh, const Species& species, const CellStateVars& state, const Chemistry& chem);
 
 	void updateRHS();
+
+	void updateRHSChem();
 
 	Eigen::VectorXd calcFluxVec(int cell_idx);
 
 	Eigen::VectorXd calcQ1DVec(int cell_idx);
 
-	Eigen::VectorXd calcSrcVec(int cell_idx);
+	Eigen::VectorXd calcNonEqSrcVec(int cell_idx);
+
+	Eigen::VectorXd calcChemSrcVec(int cell_idx);
 
 	Eigen::VectorXd calcFaceFluxLDFSS(int cell_idx) const;
 
@@ -36,6 +42,6 @@ struct CellResiduals {
 
 	double calcQuasi_1DPressure(int cell_idx) const;
 
-
+	//double calcSpeciesProduction(int cell_idx, int species_idx) const;
 };
  

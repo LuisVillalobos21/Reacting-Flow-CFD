@@ -3,6 +3,7 @@
 #include "ProjectIncludes.hpp"
 #include "SimParameters.hpp"
 #include "SpeciesThermo.hpp"
+#include "MeshProccesing.hpp"
 
 struct PrimVars {
     Eigen::VectorXd var_vec;
@@ -68,9 +69,9 @@ struct CellStateVars {
 
     double calcReducedMw(int cell_idx, int species_idx1, int species_idx2) const;
 
-    double calcA_relax(int cell_idx, int species_idx1, int species_idx2) const;
+    double calcA_relax(int cell_idx, int species_idx1, int species_idx2, int idx) const;
 
     double calcB_relax(int cell_idx, int species_idx1, int species_idx2) const;
 
-    double calcRelaxTime(int cell_idx, int species_vib) const;
+    double calcRelaxTime(int cell_idx, int species_vib, int idx) const;
 };

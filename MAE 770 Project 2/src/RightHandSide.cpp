@@ -1,13 +1,12 @@
 #include "RightHandSide.hpp"
 
-
 VariableVector::VariableVector(const SimParameters& params) {
 
 	vec = Eigen::VectorXd::Zero(params.nvariables);
 }
 
-CellResiduals::CellResiduals(const SimParameters& params, const Mesh& mesh, const Species& species, const CellStateVars& state)
-	: params(params), mesh(mesh), state(state), species(species) {
+CellResiduals::CellResiduals(const SimParameters& params, const Mesh& mesh, const Species& species, const CellStateVars& state, const Chemistry& chem)
+: params(params), mesh(mesh), state(state), species(species), chem(chem) {
 
 	cell_flux_vec.resize(mesh.jmax + 1, VariableVector(params));
 	cell_src_vec.resize(mesh.jmax + 1, VariableVector(params));
@@ -28,9 +27,22 @@ void CellResiduals::updateRHS() {
 
 		cell_res_vec[cell_idx].vec += calcQ1DVec(cell_idx);
 
-		cell_res_vec[cell_idx].vec += calcSrcVec(cell_idx);
+		cell_res_vec[cell_idx].vec += calcNonEqSrcVec(cell_idx);
 	}
 }
+
+void CellResiduals::updateRHSChem() {
+
+	for (int cell_idx = 1; cell_idx < mesh.jmax; ++cell_idx) {
+
+		double temp = state.getTemp(cell_idx);
+
+		if (temp > 1000) {
+			cell_res_vec[cell_idx].vec += calcChemSrcVec(cell_idx);
+		}
+	}
+}
+
  
 Eigen::VectorXd CellResiduals::calcFluxVec(int cell_idx) {
 
@@ -48,14 +60,26 @@ Eigen::VectorXd CellResiduals::calcQ1DVec(int cell_idx) {
 	return q1D_vec;
 }
 
-Eigen::VectorXd CellResiduals::calcSrcVec(int cell_idx) {
+Eigen::VectorXd CellResiduals::calcNonEqSrcVec(int cell_idx) {
 
 	Eigen::VectorXd src_vec = Eigen::VectorXd::Zero(params.nvariables);
+
 	src_vec(params.Tv_idx) += calcRelaxSrcTerm(cell_idx);
 
 	return src_vec;
 }
 
+Eigen::VectorXd CellResiduals::calcChemSrcVec(int cell_idx) {
+
+	Eigen::VectorXd src_vec = Eigen::VectorXd::Zero(params.nvariables);
+
+	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+
+		src_vec(species_idx) += chem.calcSpeciesProduction(cell_idx, species_idx);
+	}
+
+	return src_vec;
+}
 
 Eigen::VectorXd CellResiduals::calcFaceFluxLDFSS(int cell_idx) const {
 	
@@ -132,10 +156,33 @@ double CellResiduals::calcRelaxSrcTerm(int cell_idx) const {
 		double rho_s = state.getRho_s(cell_idx, vib_idx);
 		double ev_tr = species.getIntEnergyV(vib_idx, temp_tr);
 		double ev_v = species.getIntEnergyV(vib_idx, temp_V);
-		double tau = state.calcRelaxTime(cell_idx, vib_idx);
+		double tau = state.calcRelaxTime(cell_idx, vib_idx, idx);
 
 		value += rho_s * (ev_tr - ev_v) / tau;
 	}
 
 	return value;
 }
+
+//double CellResiduals::calcSpeciesProduction(int cell_idx, int species_idx) const {
+//
+//	Eigen::VectorXi idxs = params.spec_react_comp[species_idx].type;
+//
+//	Eigen::VectorXd rho_vec = state.cell_vec[cell_idx].var_vec.segment(0, params.nspecies);
+//
+//	double temp_tr = state.getTemp(cell_idx);
+//	double temp_V = state.getTemp_V(cell_idx);
+//
+//	double omega_dot = 0;
+//
+//	for (int i = 0; i < idxs.size(); ++i) {
+//
+//		double coeff = params.spec_react_coeff[species_idx].coeff(i);
+//
+//		omega_dot += coeff * chem.calcLawMassAction(chem.reaction_vec[idxs(i)], rho_vec, temp_tr);
+//	}
+//
+//	return species.getMw(species_idx) * omega_dot;
+//}
+
+

@@ -1,7 +1,13 @@
 #pragma once
 #include "ProjectIncludes.hpp"
-#include "MeshProccesing.hpp"
-#include "SpeciesThermo.hpp"
+
+struct ReactionCoeffPerSpecies{
+    Eigen::VectorXd coeff;
+};
+
+struct ReactionCompPerSpecies {
+    Eigen::VectorXi type;
+};
 
 struct SimParameters {
 
@@ -15,6 +21,10 @@ struct SimParameters {
     int nspecies_vib;
     Eigen::VectorXi vib_idxs;
     Eigen::VectorXd charact_temps_vib;
+
+    int num_reactions;
+    std::vector<ReactionCoeffPerSpecies> spec_react_coeff;
+    std::vector<ReactionCompPerSpecies> spec_react_comp;
 
     std::string gridPath;
     std::string speciesThermoDataPath;

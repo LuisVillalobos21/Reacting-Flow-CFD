@@ -3,21 +3,32 @@
 TimeEvolveSolution::TimeEvolveSolution(const SimParameters& params,
 	const Mesh& mesh,
 	const Species& species,
-	CellStateVars& state)
+	CellStateVars& state,
+	const Chemistry& chem)
 
-	: params(params), mesh(mesh), species(species), state(state), 
+	: params(params), mesh(mesh), species(species), state(state), chem(chem),
 	SolutionJacobians(params, mesh, species, state),
-	SolutionResiduals(params, mesh, species, state) {
+	SolutionResiduals(params, mesh, species, state, chem) {
 
 	cell_vec.resize(mesh.jmax + 1, TimeEvolveCell());
 
 	res_vec_momentum.resize(mesh.jmax + 1);
-	res_vec_energy.resize(mesh.jmax + 1);
-	res_vec_vibe.resize(mesh.jmax + 1);
+	res_vec_momentum.setZero();
 
-	residual_history_momentum.resize(params.num_time_steps);
-	residual_history_energy.resize(params.num_time_steps);
-	residual_history_vibe.resize(params.num_time_steps);
+	res_vec_energy.resize(mesh.jmax + 1);
+	res_vec_energy.setZero();
+
+	res_vec_vibe.resize(mesh.jmax + 1);
+	res_vec_vibe.setZero();
+
+	residual_history_momentum.resize(mesh.jmax + 1);
+	residual_history_momentum.setZero();
+
+	residual_history_energy.resize(mesh.jmax + 1);
+	residual_history_energy.setZero();
+
+	residual_history_vibe.resize(mesh.jmax + 1);
+	residual_history_vibe.setZero();
 }
 
 double TimeEvolveSolution::computeTimeStep(int cell_idx) {
@@ -64,6 +75,10 @@ void TimeEvolveSolution::evolveCells() {
 	SolutionJacobians.addJacobians();
 
 	SolutionResiduals.updateRHS();
+
+	if (chem_switch == 1) {
+		SolutionResiduals.updateRHSChem();
+	}
 
 	LinSolveCells();
 }
@@ -134,6 +149,10 @@ void TimeEvolveSolution::solve() {
 
 		if (resnorm_momentum < params.rel_tol && resnorm_energy < params.rel_tol && resnorm_vibe < params.rel_tol) {
 			break;
+		}
+
+		if (resnorm_momentum < chem_tol && resnorm_energy < chem_tol && resnorm_vibe < chem_tol) {
+			chem_switch = 1;
 		}
 
 		evolveCells();

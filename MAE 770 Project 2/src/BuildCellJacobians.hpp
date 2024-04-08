@@ -58,5 +58,7 @@ struct CellJacobians {
 
     void calcPartial_Relax_T_v(int cell_idx);
 
-    void calcSrcTermJacobian(int cell_idx);
+    void calcNonEqSrcTermJacobian(int cell_idx);
+
+    void calcPartialOmegaPartialRho_s(int cell_idx);
 };

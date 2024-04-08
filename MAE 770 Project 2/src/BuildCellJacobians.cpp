@@ -32,7 +32,7 @@ void CellJacobians::updateLHS() {
 
 		calcQuasi1DJacobian(cell_idx);
 
-		calcSrcTermJacobian(cell_idx);
+		calcNonEqSrcTermJacobian(cell_idx);
 
 		cell_vec[cell_idx].src_term_jac *= mesh.getCellArea1D(cell_idx);
 	}
@@ -222,7 +222,7 @@ void CellJacobians::calcPartial_Quasi_T_tr(int cell_idx) {
 	cell_vec[cell_idx].quasi_1D_jac(row_idx, col_idx) = jacobian_value;
 }
 
-void CellJacobians::calcSrcTermJacobian(int cell_idx) {
+void CellJacobians::calcNonEqSrcTermJacobian(int cell_idx) {
 
 	calcPartial_Relax_T_tr(cell_idx);
 	calcPartial_Relax_T_v(cell_idx);
@@ -242,7 +242,7 @@ void CellJacobians::calcPartial_Relax_T_tr(int cell_idx) {
 		int vib_idx = params.vib_idxs(idx);
 
 		double rho_s = state.getRho_s(cell_idx, vib_idx);
-		double tau = state.calcRelaxTime(cell_idx, vib_idx);
+		double tau = state.calcRelaxTime(cell_idx, vib_idx, idx);
 		double CVe_T = species.getCV_V(vib_idx, temp_tr);
 
 		jacobian_value += rho_s * CVe_T / tau;
@@ -264,7 +264,7 @@ void CellJacobians::calcPartial_Relax_T_v(int cell_idx) {
 		int vib_idx = params.vib_idxs(idx);
 
 		double rho_s = state.getRho_s(cell_idx, vib_idx);
-		double tau = state.calcRelaxTime(cell_idx, vib_idx);
+		double tau = state.calcRelaxTime(cell_idx, vib_idx, idx);
 		double CVe_T = species.getCV_V(vib_idx, temp_V);
 
 		jacobian_value += rho_s * CVe_T / tau;
@@ -272,4 +272,10 @@ void CellJacobians::calcPartial_Relax_T_v(int cell_idx) {
 
 	cell_vec[cell_idx].src_term_jac(row_idx, col_idx) = -jacobian_value;
 }
+
+void CellJacobians::calcPartialOmegaPartialRho_s(int cell_idx) {
+
+
+}
+
 

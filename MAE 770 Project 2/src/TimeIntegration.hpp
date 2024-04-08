@@ -7,6 +7,7 @@
 #include "CellStateVariables.hpp"
 #include "BuildCellJacobians.hpp"
 #include "RightHandSide.hpp"
+#include "Chemistry.hpp"
 
 struct TimeEvolveCell {
 
@@ -19,11 +20,15 @@ struct TimeEvolveSolution {
 	const Mesh& mesh;
 	const Species& species;
 	CellStateVars& state;
+	const Chemistry& chem;
 
 	CellJacobians SolutionJacobians;
 	CellResiduals SolutionResiduals;
 
 	std::vector<TimeEvolveCell> cell_vec;
+
+	int chem_switch = 0;
+	double chem_tol = 1e-2;
 
 	double resnorm_momentum_0;
 	double resnorm_energy_0;
@@ -44,7 +49,8 @@ struct TimeEvolveSolution {
 	TimeEvolveSolution(const SimParameters& params,
 		const Mesh& mesh,
 		const Species& species,
-		CellStateVars& state);
+		CellStateVars& state,
+		const Chemistry& chem);
 
 	double computeTimeStep(int cell_idx);
 
