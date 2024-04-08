@@ -66,6 +66,9 @@ struct Chemistry {
         const Eigen::VectorXd& species_Rho,
         double temp) const;
 
-    double calcSpeciesProduction(int cell_idx, int species_idx) const;
+    double calcSpeciesProduction(
+        Eigen::VectorXd& rho_vec,
+        double temp_tr,
+        double temp_V,
+        int species_idx) const;
 };
-

@@ -7,7 +7,7 @@ TimeEvolveSolution::TimeEvolveSolution(const SimParameters& params,
 	const Chemistry& chem)
 
 	: params(params), mesh(mesh), species(species), state(state), chem(chem),
-	SolutionJacobians(params, mesh, species, state),
+	SolutionJacobians(params, mesh, species, state, chem),
 	SolutionResiduals(params, mesh, species, state, chem) {
 
 	cell_vec.resize(mesh.jmax + 1, TimeEvolveCell());
@@ -66,6 +66,10 @@ void TimeEvolveSolution::evolveCells() {
 	updateTimeSteps();
 
 	SolutionJacobians.updateLHS();
+
+	if (chem_switch == 1) {
+		SolutionJacobians.updateLHSChem();
+	}
 
 	for (int cell_idx = 1; cell_idx < mesh.jmax; ++cell_idx) {
 

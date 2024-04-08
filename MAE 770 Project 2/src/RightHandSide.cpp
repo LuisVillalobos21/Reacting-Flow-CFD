@@ -69,18 +69,6 @@ Eigen::VectorXd CellResiduals::calcNonEqSrcVec(int cell_idx) {
 	return src_vec;
 }
 
-Eigen::VectorXd CellResiduals::calcChemSrcVec(int cell_idx) {
-
-	Eigen::VectorXd src_vec = Eigen::VectorXd::Zero(params.nvariables);
-
-	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
-
-		src_vec(species_idx) += chem.calcSpeciesProduction(cell_idx, species_idx);
-	}
-
-	return src_vec;
-}
-
 Eigen::VectorXd CellResiduals::calcFaceFluxLDFSS(int cell_idx) const {
 	
 	double ahalf = 0.5 * (state.getSoundSpeed(cell_idx) + state.getSoundSpeed(cell_idx + 1));
@@ -164,25 +152,20 @@ double CellResiduals::calcRelaxSrcTerm(int cell_idx) const {
 	return value;
 }
 
-//double CellResiduals::calcSpeciesProduction(int cell_idx, int species_idx) const {
-//
-//	Eigen::VectorXi idxs = params.spec_react_comp[species_idx].type;
-//
-//	Eigen::VectorXd rho_vec = state.cell_vec[cell_idx].var_vec.segment(0, params.nspecies);
-//
-//	double temp_tr = state.getTemp(cell_idx);
-//	double temp_V = state.getTemp_V(cell_idx);
-//
-//	double omega_dot = 0;
-//
-//	for (int i = 0; i < idxs.size(); ++i) {
-//
-//		double coeff = params.spec_react_coeff[species_idx].coeff(i);
-//
-//		omega_dot += coeff * chem.calcLawMassAction(chem.reaction_vec[idxs(i)], rho_vec, temp_tr);
-//	}
-//
-//	return species.getMw(species_idx) * omega_dot;
-//}
+Eigen::VectorXd CellResiduals::calcChemSrcVec(int cell_idx) {
+
+	Eigen::VectorXd src_vec = Eigen::VectorXd::Zero(params.nvariables);
+
+	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+
+		double temp_tr = state.getTemp(cell_idx);
+		double temp_V = state.getTemp_V(cell_idx);
+		Eigen::VectorXd rho_vec = state.cell_vec[cell_idx].var_vec.segment(0, params.nspecies);
+
+		src_vec(species_idx) += chem.calcSpeciesProduction(rho_vec, temp_tr, temp_V, species_idx);
+	}
+
+	return src_vec;
+}
 
 

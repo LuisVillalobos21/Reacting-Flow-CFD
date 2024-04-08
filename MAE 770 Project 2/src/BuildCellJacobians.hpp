@@ -1,8 +1,10 @@
 #pragma once
+#include "ProjectIncludes.hpp"
 #include "SimParameters.hpp"
 #include "MeshProccesing.hpp"
 #include "SpeciesThermo.hpp"
 #include "CellStateVariables.hpp"
+#include "Chemistry.hpp"
 
 struct LHS {
 
@@ -23,14 +25,18 @@ struct CellJacobians {
     const Mesh& mesh;
     const Species& species;
     const CellStateVars& state;
+    const Chemistry& chem;
 
     CellJacobians(
         const SimParameters& params, 
         const Mesh& mesh,
         const Species& species, 
-        const CellStateVars& state);
+        const CellStateVars& state,
+        const Chemistry& chem);
 
     void updateLHS();
+
+    void updateLHSChem();
 
     void addJacobians();
 
@@ -60,5 +66,9 @@ struct CellJacobians {
 
     void calcNonEqSrcTermJacobian(int cell_idx);
 
-    void calcPartialOmegaPartialRho_s(int cell_idx);
+    void calcChemSrcTermJacobian(int cell_idx);
+
+    void calcPartialOmega_Rho_s_Diag(int cell_idx);
+
+    void calcPartialOmega_Rho_s_OffDiag(int cell_idx);
 };

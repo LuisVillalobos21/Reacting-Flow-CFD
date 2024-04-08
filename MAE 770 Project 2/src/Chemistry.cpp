@@ -230,14 +230,13 @@ double Chemistry::calcLawMassAction(
     return (k_f * forward_concentration - k_b * backward_concentration) * TB_factor;
 }
 
-double Chemistry::calcSpeciesProduction(int cell_idx, int species_idx) const {
+double Chemistry::calcSpeciesProduction(
+    Eigen::VectorXd& rho_vec,
+    double temp_tr,
+    double temp_V,
+    int species_idx) const {
 
     Eigen::VectorXi idxs = params.spec_react_comp[species_idx].type;
-
-    Eigen::VectorXd rho_vec = state.cell_vec[cell_idx].var_vec.segment(0, params.nspecies);
-
-    double temp_tr = state.getTemp(cell_idx);
-    double temp_V = state.getTemp_V(cell_idx);
 
     double omega_dot = 0;
 

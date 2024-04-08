@@ -41,7 +41,5 @@ struct CellResiduals {
 	double calcRelaxSrcTerm(int cell_idx) const;
 
 	double calcQuasi_1DPressure(int cell_idx) const;
-
-	//double calcSpeciesProduction(int cell_idx, int species_idx) const;
 };
  
