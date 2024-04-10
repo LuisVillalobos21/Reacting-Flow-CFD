@@ -28,6 +28,8 @@ struct CellResiduals {
 
 	void updateRHSChem();
 
+	void addVectors();
+
 	Eigen::VectorXd calcFluxVec(int cell_idx);
 
 	Eigen::VectorXd calcQ1DVec(int cell_idx);
@@ -41,5 +43,7 @@ struct CellResiduals {
 	double calcRelaxSrcTerm(int cell_idx) const;
 
 	double calcQuasi_1DPressure(int cell_idx) const;
+
+	double calcChemVibProd(int cell_idx) const;
 };
  

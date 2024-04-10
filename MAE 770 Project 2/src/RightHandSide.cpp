@@ -25,9 +25,9 @@ void CellResiduals::updateRHS() {
 
 		cell_res_vec[cell_idx].vec = -calcFluxVec(cell_idx);
 
-		cell_res_vec[cell_idx].vec += calcQ1DVec(cell_idx);
+		cell_q1D_vec[cell_idx].vec = calcQ1DVec(cell_idx);
 
-		cell_res_vec[cell_idx].vec += calcNonEqSrcVec(cell_idx);
+		cell_src_vec[cell_idx].vec = calcNonEqSrcVec(cell_idx);
 	}
 }
 
@@ -38,8 +38,17 @@ void CellResiduals::updateRHSChem() {
 		double temp = state.getTemp(cell_idx);
 
 		if (temp > 1000) {
-			cell_res_vec[cell_idx].vec += calcChemSrcVec(cell_idx);
+			cell_src_vec[cell_idx].vec += calcChemSrcVec(cell_idx);
 		}
+	}
+}
+
+void CellResiduals::addVectors() {
+
+	for (int cell_idx = 1; cell_idx < mesh.jmax; ++cell_idx) {
+		
+		double area = mesh.getCellArea1D(cell_idx);
+		cell_res_vec[cell_idx].vec += area * cell_src_vec[cell_idx].vec + cell_q1D_vec[cell_idx].vec;
 	}
 }
 
@@ -152,20 +161,42 @@ double CellResiduals::calcRelaxSrcTerm(int cell_idx) const {
 	return value;
 }
 
+double CellResiduals::calcChemVibProd(int cell_idx) const {
+
+	double value = 0.0;
+
+	double temp_tr = state.getTemp(cell_idx);
+	double temp_V = state.getTemp_V(cell_idx);
+	Eigen::VectorXd rho_vec = state.cell_vec[cell_idx].var_vec.segment(0, params.nspecies);
+
+	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+
+		double ev_v = species.getIntEnergyV(species_idx, temp_V);
+
+		value += ev_v * chem.calcSpeciesProduction(rho_vec, temp_tr, temp_V, species_idx);
+	}
+
+	return value;
+}
+
 Eigen::VectorXd CellResiduals::calcChemSrcVec(int cell_idx) {
 
 	Eigen::VectorXd src_vec = Eigen::VectorXd::Zero(params.nvariables);
 
-	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+	double temp_tr = state.getTemp(cell_idx);
+	double temp_V = state.getTemp_V(cell_idx);
+	Eigen::VectorXd rho_vec = state.cell_vec[cell_idx].var_vec.segment(0, params.nspecies);
 
-		double temp_tr = state.getTemp(cell_idx);
-		double temp_V = state.getTemp_V(cell_idx);
-		Eigen::VectorXd rho_vec = state.cell_vec[cell_idx].var_vec.segment(0, params.nspecies);
+	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
 
 		src_vec(species_idx) += chem.calcSpeciesProduction(rho_vec, temp_tr, temp_V, species_idx);
 	}
 
+	src_vec(params.Tv_idx) += calcChemVibProd(cell_idx);
+
 	return src_vec;
 }
+
+
 
 

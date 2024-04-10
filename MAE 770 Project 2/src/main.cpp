@@ -13,9 +13,10 @@ struct PostProcess {
     const SimParameters& params;
     const Mesh& mesh;
     const CellStateVars& state;
+    const TimeEvolveSolution& evolve;
 
-    PostProcess(const SimParameters& params, const Mesh& mesh, CellStateVars& state)
-    : params(params), mesh(mesh), state(state) {
+    PostProcess(const SimParameters& params, const Mesh& mesh,const CellStateVars& state, const TimeEvolveSolution& evolve)
+    : params(params), mesh(mesh), state(state), evolve(evolve) {
     }
 
     void writeDataToFile(int flag, const std::string& filename) {
@@ -59,6 +60,16 @@ struct PostProcess {
             return;
         }
 
+        if (flag == -4) {
+            for (size_t idx = 0; idx < evolve.residual_history_momentum.size(); ++idx) {
+                outFile << evolve.residual_history_momentum[idx] << ", "
+                    << evolve.residual_history_energy[idx] << ", "
+                    << evolve.residual_history_vibe[idx] << '\n';
+            }
+            std::cout << "Residual history data written to " << filename << '\n';
+            return;
+        }
+
         outFile << std::fixed << std::setprecision(9);
         for (int cell_idx = 0; cell_idx < mesh.jmax + 1; ++cell_idx) {
             outFile << state.cell_vec[cell_idx].var_vec(flag) << '\n';
@@ -96,7 +107,7 @@ int main() {
 
     evolve.solve();
 
-    PostProcess PP(params, mesh, state);
+    PostProcess PP(params, mesh, state, evolve);
 
     std::cout << "Postprocessing complete" << '\n' << '\n';
 
@@ -106,8 +117,9 @@ int main() {
     PP.writeDataToFile(-1, "soln_pressure.dat");
     PP.writeDataToFile(-2, "soln_density.dat");
     PP.writeDataToFile(-3, "soln_species_densities.dat");
+    PP.writeDataToFile(-4, "residuals.dat");
 
-    std::cout << '\n';
+    std::cout << '\n' << '\n';
 
     std::cout << "Press ENTER to continue...";
     std::cin.get();

@@ -34,7 +34,7 @@ void CellStateVars::initializeFlowFieldShock() {
 
 	for (int cell_idx = middle; cell_idx < mesh.jmax + 1; ++cell_idx) {
 
-		double temp_init = 3000;
+		double temp_init = 4000;
 		double mach = std::sqrt(1.4 * 287 * temp_init);
 
 		cell_vec[cell_idx].var_vec(params.vel_idx) = mach * .75; // some subsonic velocity

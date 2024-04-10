@@ -28,7 +28,7 @@ struct TimeEvolveSolution {
 	std::vector<TimeEvolveCell> cell_vec;
 
 	int chem_switch = 0;
-	double chem_tol = 1e-3;
+	double chem_tol = 1e-2;
 
 	double resnorm_momentum_0;
 	double resnorm_energy_0;
@@ -42,9 +42,9 @@ struct TimeEvolveSolution {
 	Eigen::VectorXd res_vec_energy;
 	Eigen::VectorXd res_vec_vibe;
 
-	Eigen::VectorXd residual_history_momentum;
-	Eigen::VectorXd residual_history_energy;
-	Eigen::VectorXd residual_history_vibe;
+	std::vector<double> residual_history_momentum;
+	std::vector<double> residual_history_energy;
+	std::vector<double> residual_history_vibe;
 
 	TimeEvolveSolution(const SimParameters& params,
 		const Mesh& mesh,

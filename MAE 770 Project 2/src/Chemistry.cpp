@@ -27,7 +27,7 @@ void Reaction::readReactionFile(const std::string& filepath) {
     }
 
     std::string line;
-    bool isTB_Collision = false;
+    bool isTB_Dissoc = false;
     while (getline(inputFile, line)) {
         std::istringstream iss(line);
         std::string keyword;
@@ -36,10 +36,10 @@ void Reaction::readReactionFile(const std::string& filepath) {
         if (keyword == "TYPE") {
             std::string value;
             iss >> value;
-            if (value == "TB_COLLISION") {
+            if (value == "TB_DISSOCIATION") {
 
-                type = ReactionType::Collision;
-                isTB_Collision = true;
+                type = ReactionType::Dissociation;
+                isTB_Dissoc = true;
                 TB_coeff.resize(params.nspecies);
                 alpha = 1000.0; // hardcocde alpha 
             }
@@ -93,7 +93,7 @@ void Reaction::readReactionFile(const std::string& filepath) {
                 }
             }
         }
-        else if (keyword == "THIRD_BODY_COEFF" && isTB_Collision) {
+        else if (keyword == "THIRD_BODY_COEFF" && isTB_Dissoc) {
             if (getline(inputFile, line)) {
                 std::istringstream thirdbodyStream(line);
                 for (int i = 0; i < params.nspecies; ++i) {
@@ -115,9 +115,15 @@ void Reaction::readReactionFile(const std::string& filepath) {
     inputFile.close();
 }
 
-double Reaction::calcForwardRate(double temp) const {
+double Reaction::calcForwardRate(double temp, double temp_V) const {
 
-    return C_f * pow(temp, eta) * exp(-theta_d / temp);
+    if (type != ReactionType::Dissociation) {
+        return C_f * pow(temp, eta) * exp(-theta_d / temp);
+    }
+
+    double temp_combo = sqrt(temp * temp_V);
+
+    return C_f * pow(temp_combo, eta) * exp(-theta_d / temp_combo);
 }
 
 double Reaction::calcEqRate(double temp) const {
@@ -134,9 +140,9 @@ double Reaction::calcEqRate(double temp) const {
         A5 * z4);
 }
 
-double Reaction::calcBackwardRate(double temp) const {
+double Reaction::calcBackwardRate(double temp, double temp_V) const {
 
-    double k_f = calcForwardRate(temp);
+    double k_f = calcForwardRate(temp, temp_V);
     double k_eq = calcEqRate(temp);
 
     return k_f / k_eq;
@@ -152,6 +158,12 @@ Chemistry::Chemistry(
     const Species& species, 
     const CellStateVars& state)
     :params(params), species(species), state(state) {
+
+    inverted_M_w.resize(params.nspecies);
+    for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+        double M_w = species.getMw(species_idx);
+        inverted_M_w(species_idx) = 1.0 / M_w;
+    }
 
     readReactionInput(inputListFile);
 }
@@ -172,58 +184,40 @@ void Chemistry::readReactionInput(const std::string& filename) {
     inputFile.close();
 }
 
-Eigen::VectorXd Chemistry::calcConcentrations(const Eigen::VectorXd& species_Rho) const{
-    Eigen::VectorXd concentrations = Eigen::VectorXd::Zero(params.nspecies);
-
-    for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
-
-        double rho = species_Rho(species_idx);
-        double M_w = species.getMw(species_idx); 
-        concentrations(species_idx) = rho / M_w;
-    }
-    return concentrations;
+Eigen::VectorXd Chemistry::calcConcentrations(const Eigen::VectorXd& species_Rho) const {
+    return species_Rho.cwiseProduct(inverted_M_w);
 }
 
-double Chemistry::calcTBFactor(const Reaction& reaction, const Eigen::VectorXd& concentrations) const{
-    if (reaction.type != ReactionType::Collision) {
-        return 1.0; 
+double Chemistry::calcTBFactor(const Reaction& reaction, const Eigen::VectorXd& concentrations) const {
+    if (reaction.type != ReactionType::Dissociation) {
+        return 1.0;
     }
 
-    double TB_factor = 0.0;
-    for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
-
-        TB_factor += reaction.TB_coeff(species_idx) * concentrations(species_idx);
-    }
-    return TB_factor;
+    return reaction.TB_coeff.dot(concentrations);
 }
+
 
 double Chemistry::calcLawMassAction(
     const Reaction& reaction,
     const Eigen::VectorXd& species_Rho,
-    double temp) const{
+    double temp,
+    double temp_V) const {
 
     Eigen::VectorXd concentrations = calcConcentrations(species_Rho);
-
     double TB_factor = calcTBFactor(reaction, concentrations);
+    double k_f = reaction.calcForwardRate(temp, temp_V);
+    double k_b = reaction.calcBackwardRate(temp, temp_V);
 
-    double k_f = reaction.calcForwardRate(temp);
-    double k_b = reaction.calcBackwardRate(temp);
-
-    double forward_concentration = 1.0;
+    double forward_concentration = (reaction.num_reactants > 0) ? 1.0 : 0.0;
+    double backward_concentration = (reaction.num_products > 0) ? 1.0 : 0.0;
 
     for (int idx = 0; idx < reaction.num_reactants; ++idx) {
-
         int reactant_idx = reaction.reactant_idxs(idx);
-
         forward_concentration *= concentrations(reactant_idx);
     }
 
-    double backward_concentration = 1.0;
-
     for (int idx = 0; idx < reaction.num_products; ++idx) {
-
         int product_idx = reaction.product_idxs(idx);
-
         backward_concentration *= concentrations(product_idx);
     }
 
@@ -244,7 +238,7 @@ double Chemistry::calcSpeciesProduction(
 
         double coeff = params.spec_react_coeff[species_idx].coeff(i);
 
-        omega_dot += coeff * calcLawMassAction(reaction_vec[idxs(i)], rho_vec, temp_tr);
+        omega_dot += coeff * calcLawMassAction(reaction_vec[idxs(i)], rho_vec, temp_tr, temp_V);
     }
 
     return species.getMw(species_idx) * omega_dot;

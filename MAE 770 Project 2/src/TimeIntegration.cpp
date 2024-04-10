@@ -20,15 +20,6 @@ TimeEvolveSolution::TimeEvolveSolution(const SimParameters& params,
 
 	res_vec_vibe.resize(mesh.jmax + 1);
 	res_vec_vibe.setZero();
-
-	residual_history_momentum.resize(mesh.jmax + 1);
-	residual_history_momentum.setZero();
-
-	residual_history_energy.resize(mesh.jmax + 1);
-	residual_history_energy.setZero();
-
-	residual_history_vibe.resize(mesh.jmax + 1);
-	residual_history_vibe.setZero();
 }
 
 double TimeEvolveSolution::computeTimeStep(int cell_idx) {
@@ -84,6 +75,8 @@ void TimeEvolveSolution::evolveCells() {
 		SolutionResiduals.updateRHSChem();
 	}
 
+	SolutionResiduals.addVectors();
+
 	LinSolveCells();
 }
 
@@ -135,17 +128,28 @@ void TimeEvolveSolution::calcConvergence(int step) {
 		resnorm_momentum = res_vec_momentum.norm() / resnorm_momentum_0;
 		resnorm_energy = res_vec_energy.norm() / resnorm_energy_0;
 		resnorm_vibe = res_vec_vibe.norm() / resnorm_vibe_0;
+
+		residual_history_momentum.emplace_back(resnorm_momentum);
+		residual_history_energy.emplace_back(resnorm_energy);
+		residual_history_vibe.emplace_back(resnorm_vibe);
+
 		return;
 	}
 
 	resnorm_momentum = res_vec_momentum.norm() / resnorm_momentum_0;
 	resnorm_energy = res_vec_energy.norm() / resnorm_energy_0;
 	resnorm_vibe = res_vec_vibe.norm() / resnorm_vibe_0;
+
+	residual_history_momentum.emplace_back(resnorm_momentum);
+	residual_history_energy.emplace_back(resnorm_energy);
+	residual_history_vibe.emplace_back(resnorm_vibe);
 }
 
 
 
 void TimeEvolveSolution::solve() {
+
+	bool chem_operations_done = false;
 
 	auto start = std::chrono::high_resolution_clock::now();
 
@@ -155,7 +159,7 @@ void TimeEvolveSolution::solve() {
 			break;
 		}
 
-		if (resnorm_momentum < chem_tol && resnorm_energy < chem_tol && resnorm_vibe < chem_tol) {
+		if (chem_switch == 0 && resnorm_momentum < chem_tol && resnorm_energy < chem_tol && resnorm_vibe < chem_tol) {
 			chem_switch = 1;
 		}
 

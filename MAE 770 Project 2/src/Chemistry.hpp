@@ -5,7 +5,7 @@
 #include "CellStateVariables.hpp"
 
 enum class ReactionType {
-    Collision,
+    Dissociation,
     Exchange,
 };
 
@@ -38,11 +38,11 @@ struct Reaction {
 
     void readReactionFile(const std::string& filepath);
 
-    double calcForwardRate(double temp) const;
+    double calcForwardRate(double temp, double temp_V) const;
 
     double calcEqRate(double temp) const;
 
-    double calcBackwardRate(double temp) const;
+    double calcBackwardRate(double temp, double temp_V) const;
 };
 
 struct Chemistry {
@@ -52,6 +52,8 @@ struct Chemistry {
     const SimParameters& params;
     const Species& species;
     const CellStateVars& state;
+
+    Eigen::VectorXd inverted_M_w;
 
     Chemistry(const std::string& inputListFile, const SimParameters& params, const Species& species, const CellStateVars& state);
 
@@ -64,7 +66,8 @@ struct Chemistry {
     double calcLawMassAction(
         const Reaction& reaction,
         const Eigen::VectorXd& species_Rho,
-        double temp) const;
+        double temp,
+        double temp_V) const;
 
     double calcSpeciesProduction(
         Eigen::VectorXd& rho_vec,
