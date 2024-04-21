@@ -111,13 +111,13 @@ int main() {
 
     std::cout << "Postprocessing complete" << '\n' << '\n';
 
-    PP.writeDataToFile(params.vel_idx, "soln_vel.dat");
-    PP.writeDataToFile(params.T_idx, "soln_temp.dat");
-    PP.writeDataToFile(params.Tv_idx, "soln_tempV.dat");
-    PP.writeDataToFile(-1, "soln_pressure.dat");
-    PP.writeDataToFile(-2, "soln_density.dat");
-    PP.writeDataToFile(-3, "soln_species_densities.dat");
-    PP.writeDataToFile(-4, "residuals.dat");
+    PP.writeDataToFile(params.vel_idx, "soln_vel_tc_neq_off.dat");
+    PP.writeDataToFile(params.T_idx, "soln_temp_tc_neq_off.dat");
+    PP.writeDataToFile(params.Tv_idx, "soln_tempV_tc_neq_off.dat");
+    PP.writeDataToFile(-1, "soln_pressure_tc_neq_off.dat");
+    PP.writeDataToFile(-2, "soln_density_tc_neq_off.dat");
+    PP.writeDataToFile(-3, "soln_species_densities_tc_neq_off.dat");
+    PP.writeDataToFile(-4, "residuals_tc_neq_off.dat");
 
     std::cout << '\n' << '\n';
 

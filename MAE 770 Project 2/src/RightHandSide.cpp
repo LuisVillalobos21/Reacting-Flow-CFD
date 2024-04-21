@@ -8,10 +8,9 @@ VariableVector::VariableVector(const SimParameters& params) {
 CellResiduals::CellResiduals(const SimParameters& params, const Mesh& mesh, const Species& species, const CellStateVars& state, const Chemistry& chem)
 : params(params), mesh(mesh), state(state), species(species), chem(chem) {
 
+	cell_res_vec.resize(mesh.jmax + 1, VariableVector(params));
 	cell_flux_vec.resize(mesh.jmax + 1, VariableVector(params));
 	cell_src_vec.resize(mesh.jmax + 1, VariableVector(params));
-	cell_q1D_vec.resize(mesh.jmax + 1, VariableVector(params));
-	cell_res_vec.resize(mesh.jmax + 1, VariableVector(params));
 }
 
 void CellResiduals::updateRHS() {
@@ -23,11 +22,17 @@ void CellResiduals::updateRHS() {
 
 	for (int cell_idx = 1; cell_idx < mesh.jmax; ++cell_idx) {
 
+		double area = mesh.getCellArea1D(cell_idx);
+
 		cell_res_vec[cell_idx].vec = -calcFluxVec(cell_idx);
 
-		cell_q1D_vec[cell_idx].vec = calcQ1DVec(cell_idx);
+		cell_res_vec[cell_idx].vec(params.vel_idx) += calcQuasi_1DPressure(cell_idx);
 
-		cell_src_vec[cell_idx].vec = calcNonEqSrcVec(cell_idx);
+		double temp = state.getTemp(cell_idx);
+
+		if (temp > 1000) {
+			cell_res_vec[cell_idx].vec(params.Tv_idx) += area * calcRelaxSrcTerm(cell_idx);
+		}
 	}
 }
 
@@ -38,52 +43,24 @@ void CellResiduals::updateRHSChem() {
 		double temp = state.getTemp(cell_idx);
 
 		if (temp > 1000) {
-			cell_src_vec[cell_idx].vec += calcChemSrcVec(cell_idx);
+			cell_src_vec[cell_idx].vec += calcChemSrcVec(cell_idx); // this needs to get multipled by area
 		}
 	}
 }
-
-void CellResiduals::addVectors() {
-
-	for (int cell_idx = 1; cell_idx < mesh.jmax; ++cell_idx) {
-		
-		double area = mesh.getCellArea1D(cell_idx);
-		cell_res_vec[cell_idx].vec += area * cell_src_vec[cell_idx].vec + cell_q1D_vec[cell_idx].vec;
-	}
-}
-
  
 Eigen::VectorXd CellResiduals::calcFluxVec(int cell_idx) {
 
 	double dx = mesh.getCelldx1D(cell_idx);
-	Eigen::VectorXd right_flux = cell_flux_vec[cell_idx].vec;
-	Eigen::VectorXd left_flux = cell_flux_vec[cell_idx - 1].vec;
-	return (right_flux - left_flux) / dx;
-}
 
-Eigen::VectorXd CellResiduals::calcQ1DVec(int cell_idx) {
-
-	Eigen::VectorXd q1D_vec = Eigen::VectorXd::Zero(params.nvariables);
-	q1D_vec(params.vel_idx) += calcQuasi_1DPressure(cell_idx);
-
-	return q1D_vec;
-}
-
-Eigen::VectorXd CellResiduals::calcNonEqSrcVec(int cell_idx) {
-
-	Eigen::VectorXd src_vec = Eigen::VectorXd::Zero(params.nvariables);
-
-	src_vec(params.Tv_idx) += calcRelaxSrcTerm(cell_idx);
-
-	return src_vec;
+	return (cell_flux_vec[cell_idx].vec - cell_flux_vec[cell_idx - 1].vec) / dx;
 }
 
 Eigen::VectorXd CellResiduals::calcFaceFluxLDFSS(int cell_idx) const {
 	
 	double ahalf = 0.5 * (state.getSoundSpeed(cell_idx) + state.getSoundSpeed(cell_idx + 1));
 
-	double ul = state.getVel_components(cell_idx)(0); // just the first velocity index for now
-	double ur = state.getVel_components(cell_idx + 1)(0);
+	double ul = state.getVel_components(cell_idx);
+	double ur = state.getVel_components(cell_idx + 1);
 
 	double xml = ul / ahalf;
 	double xmr = ur / ahalf;
@@ -120,10 +97,7 @@ Eigen::VectorXd CellResiduals::calcFaceFluxLDFSS(int cell_idx) const {
 
 	double pnet = (all * (1.0 + btl) - btl * ppl) * Pl + (alr * (1.0 + btr) - btr * ppr) * Pr;
 
-	Eigen::VectorXd left_vars = fml * state.getFluxVars(cell_idx); 
-	Eigen::VectorXd right_vars = fmr * state.getFluxVars(cell_idx + 1);
-
-	Eigen::VectorXd flux = right_vars + left_vars;
+	Eigen::VectorXd flux = fmr * state.getFluxVars(cell_idx + 1) + fml * state.getFluxVars(cell_idx);
 	flux(params.vel_idx) += mesh.getFaceArea1D(cell_idx) * pnet;
 
 	return flux;
@@ -167,13 +141,13 @@ double CellResiduals::calcChemVibProd(int cell_idx) const {
 
 	double temp_tr = state.getTemp(cell_idx);
 	double temp_V = state.getTemp_V(cell_idx);
-	Eigen::VectorXd rho_vec = state.cell_vec[cell_idx].var_vec.segment(0, params.nspecies);
+	Eigen::VectorXd species_con = state.cell_vec[cell_idx].concentrations;
 
 	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
 
 		double ev_v = species.getIntEnergyV(species_idx, temp_V);
 
-		value += ev_v * chem.calcSpeciesProduction(rho_vec, temp_tr, temp_V, species_idx);
+		value += ev_v * chem.calcSpeciesProduction(species_con, temp_tr, temp_V, species_idx);
 	}
 
 	return value;
@@ -185,11 +159,11 @@ Eigen::VectorXd CellResiduals::calcChemSrcVec(int cell_idx) {
 
 	double temp_tr = state.getTemp(cell_idx);
 	double temp_V = state.getTemp_V(cell_idx);
-	Eigen::VectorXd rho_vec = state.cell_vec[cell_idx].var_vec.segment(0, params.nspecies);
+	Eigen::VectorXd species_con = state.cell_vec[cell_idx].concentrations;
 
 	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
 
-		src_vec(species_idx) += chem.calcSpeciesProduction(rho_vec, temp_tr, temp_V, species_idx);
+		src_vec(species_idx) += chem.calcSpeciesProduction(species_con, temp_tr, temp_V, species_idx);
 	}
 
 	src_vec(params.Tv_idx) += calcChemVibProd(cell_idx);

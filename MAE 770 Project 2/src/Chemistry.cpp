@@ -116,15 +116,20 @@ void Reaction::readReactionFile(const std::string& filepath) {
 }
 
 double Reaction::calcForwardRate(double temp, double temp_V) const {
-
+    double rate;
     if (type != ReactionType::Dissociation) {
-        return C_f * pow(temp, eta) * exp(-theta_d / temp);
+        // Use exp(log(x)*y) instead of pow(x, y) for fixed y
+        double value = eta * std::log(temp);
+        rate = C_f * std::exp(value) * std::exp(-theta_d / temp);
     }
-
-    double temp_combo = sqrt(temp * temp_V);
-
-    return C_f * pow(temp_combo, eta) * exp(-theta_d / temp_combo);
+    else {
+        double temp_combo = std::sqrt(temp * temp_V);
+        double value = eta * std::log(temp_combo);
+        rate = C_f * std::exp(value) * std::exp(-theta_d / temp_combo);
+    }
+    return rate;
 }
+
 
 double Reaction::calcEqRate(double temp) const {
 
@@ -199,12 +204,11 @@ double Chemistry::calcTBFactor(const Reaction& reaction, const Eigen::VectorXd& 
 
 double Chemistry::calcLawMassAction(
     const Reaction& reaction,
-    const Eigen::VectorXd& species_Rho,
+    const Eigen::VectorXd& species_con,
     double temp,
-    double temp_V) const {
+    double temp_V) const{
 
-    Eigen::VectorXd concentrations = calcConcentrations(species_Rho);
-    double TB_factor = calcTBFactor(reaction, concentrations);
+    double TB_factor = calcTBFactor(reaction, species_con);
     double k_f = reaction.calcForwardRate(temp, temp_V);
     double k_b = reaction.calcBackwardRate(temp, temp_V);
 
@@ -213,19 +217,19 @@ double Chemistry::calcLawMassAction(
 
     for (int idx = 0; idx < reaction.num_reactants; ++idx) {
         int reactant_idx = reaction.reactant_idxs(idx);
-        forward_concentration *= concentrations(reactant_idx);
+        forward_concentration *= species_con(reactant_idx);
     }
 
     for (int idx = 0; idx < reaction.num_products; ++idx) {
         int product_idx = reaction.product_idxs(idx);
-        backward_concentration *= concentrations(product_idx);
+        backward_concentration *= species_con(product_idx);
     }
 
     return (k_f * forward_concentration - k_b * backward_concentration) * TB_factor;
 }
 
 double Chemistry::calcSpeciesProduction(
-    Eigen::VectorXd& rho_vec,
+    Eigen::VectorXd& species_con,
     double temp_tr,
     double temp_V,
     int species_idx) const {
@@ -238,7 +242,7 @@ double Chemistry::calcSpeciesProduction(
 
         double coeff = params.spec_react_coeff[species_idx].coeff(i);
 
-        omega_dot += coeff * calcLawMassAction(reaction_vec[idxs(i)], rho_vec, temp_tr, temp_V);
+        omega_dot += coeff * calcLawMassAction(reaction_vec[idxs(i)], species_con, temp_tr, temp_V);
     }
 
     return species.getMw(species_idx) * omega_dot;

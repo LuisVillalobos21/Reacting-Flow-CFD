@@ -10,6 +10,8 @@ struct PrimVars {
 
     Eigen::VectorXd mass_fracs;
 
+    Eigen::VectorXd concentrations;
+
     double Rho;
 
     double Pressure;
@@ -24,6 +26,8 @@ struct CellStateVars {
     const Mesh& mesh;
 
     std::vector<PrimVars> cell_vec;
+
+    Eigen::VectorXd inverted_M_w;
 
     CellStateVars(const SimParameters& params, const Mesh& mesh, const Species& species);
 
@@ -47,7 +51,7 @@ struct CellStateVars {
 
     double getPressure(int cell_idx) const;
 
-    Eigen::VectorXd getVel_components(int cell_idx) const;
+    double getVel_components(int cell_idx) const;
 
     double getKineticEnergy(int cell_idx) const;
 

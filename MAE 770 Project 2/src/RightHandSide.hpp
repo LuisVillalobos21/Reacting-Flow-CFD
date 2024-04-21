@@ -13,7 +13,6 @@ struct CellResiduals {
 
 	std::vector<VariableVector> cell_flux_vec;
 	std::vector<VariableVector> cell_src_vec;
-	std::vector<VariableVector> cell_q1D_vec;
 	std::vector<VariableVector> cell_res_vec;
 
 	const SimParameters& params;
@@ -27,8 +26,6 @@ struct CellResiduals {
 	void updateRHS();
 
 	void updateRHSChem();
-
-	void addVectors();
 
 	Eigen::VectorXd calcFluxVec(int cell_idx);
 

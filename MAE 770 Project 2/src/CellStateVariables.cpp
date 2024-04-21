@@ -1,12 +1,20 @@
 #include "CellStateVariables.hpp"
 
 PrimVars::PrimVars(const SimParameters& params) 
-	: var_vec(Eigen::VectorXd::Zero(params.nvariables)), mass_fracs(Eigen::VectorXd::Zero(params.nspecies)), Pressure(0.0), Rho(0.0) {}
+	: var_vec(Eigen::VectorXd::Zero(params.nvariables)), mass_fracs(Eigen::VectorXd::Zero(params.nspecies)), 
+	concentrations(Eigen::VectorXd::Zero(params.nspecies)), 
+Pressure(0.0), Rho(0.0) {}
 
 CellStateVars::CellStateVars(const SimParameters& params, const Mesh& mesh, const Species& species)
 	:params(params), mesh(mesh), species(species) {
 
 	cell_vec.resize(mesh.jmax + 1, PrimVars(params));
+
+	inverted_M_w.resize(params.nspecies);
+	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+		double M_w = species.getMw(species_idx);
+		inverted_M_w(species_idx) = 1.0 / M_w;
+	}
 
 	initializeFlowFieldShock();
 	//initializeFlowFieldSuperSonic();
@@ -14,7 +22,6 @@ CellStateVars::CellStateVars(const SimParameters& params, const Mesh& mesh, cons
 
 void CellStateVars::initializeFlowFieldShock() {
 
-	//int middle = mesh.jmax + 1 - static_cast<int>((mesh.jmax + 1) / 2);
 	int middle = static_cast<int>((mesh.jmax + 1) / 3);
 
 	for (int cell_idx = 0; cell_idx < middle; ++cell_idx) {
@@ -23,6 +30,8 @@ void CellStateVars::initializeFlowFieldShock() {
 			cell_vec[cell_idx].var_vec(species_idx) = params.ref_rho_s(species_idx);
 			cell_vec[cell_idx].mass_fracs(species_idx) = params.ref_species_mass_frac(species_idx);
 		}
+
+		cell_vec[cell_idx].concentrations = cell_vec[cell_idx].var_vec.segment(0, params.nspecies).cwiseProduct(inverted_M_w);
 
 		cell_vec[cell_idx].var_vec(params.vel_idx) = params.ref_velocity;
 		cell_vec[cell_idx].var_vec(params.T_idx) = params.ref_temperature;
@@ -34,7 +43,7 @@ void CellStateVars::initializeFlowFieldShock() {
 
 	for (int cell_idx = middle; cell_idx < mesh.jmax + 1; ++cell_idx) {
 
-		double temp_init = 4000;
+		double temp_init = 3000;
 		double mach = std::sqrt(1.4 * 287 * temp_init);
 
 		cell_vec[cell_idx].var_vec(params.vel_idx) = mach * .75; // some subsonic velocity
@@ -48,6 +57,8 @@ void CellStateVars::initializeFlowFieldShock() {
 			cell_vec[cell_idx].mass_fracs(species_idx) = params.ref_species_mass_frac(species_idx);
 			cell_vec[cell_idx].var_vec(species_idx) = getRho(cell_idx) * getMassFrac(cell_idx, species_idx);
 		}
+
+		cell_vec[cell_idx].concentrations = cell_vec[cell_idx].var_vec.segment(0, params.nspecies).cwiseProduct(inverted_M_w);
 	}
 }
 
@@ -66,6 +77,7 @@ void CellStateVars::initializeFlowFieldSuperSonic() {
 
 		cell_vec[cell_idx].Rho = calcRho(cell_idx);
 		cell_vec[cell_idx].Pressure = calcPressure(cell_idx);
+		cell_vec[cell_idx].concentrations = cell_vec[cell_idx].var_vec.segment(0, params.nspecies).cwiseProduct(inverted_M_w);
 	}
 
 	cell_vec[mesh.jmax].Pressure = params.Pback;
@@ -175,7 +187,7 @@ Eigen::VectorXd CellStateVars::getFluxVars(int cell_idx) const {
 		flux_vars(species_idx) = getMassFrac(cell_idx, species_idx);
 	}
 
-	flux_vars.segment(params.vel_idx, params.ndimension) = getVel_components(cell_idx);
+	flux_vars(params.vel_idx) = getVel_components(cell_idx);
 
 	flux_vars(params.T_idx) = calcTotalEnergy(cell_idx);
 
@@ -184,15 +196,15 @@ Eigen::VectorXd CellStateVars::getFluxVars(int cell_idx) const {
 	return flux_vars;
 }
 
-Eigen::VectorXd CellStateVars::getVel_components(int cell_idx) const {
-	return cell_vec[cell_idx].var_vec.segment(params.vel_idx, params.ndimension);
+double CellStateVars::getVel_components(int cell_idx) const {
+	return cell_vec[cell_idx].var_vec(params.vel_idx);
 }
 
 double CellStateVars::getKineticEnergy(int cell_idx) const {
 
-	Eigen::VectorXd vel_vec = getVel_components(cell_idx);
+	double vel_vec = getVel_components(cell_idx);
 	double rho = getRho(cell_idx);
-	return (0.5 * rho * vel_vec.squaredNorm()); // no longer multiplied by 1000
+	return (0.5 * rho * vel_vec * vel_vec); // no longer multiplied by 1000
 }
 
 double CellStateVars::getTemp(int cell_idx) const {
@@ -254,13 +266,18 @@ double CellStateVars::calcReducedMw(int cell_idx, int species_idx1, int species_
 	return (Wm * Wn) / (Wm + Wn);
 }
 
+double fast_cbrt(double x) {
+	return exp(log(x) * 0.3333333333333333); 
+}
+
+
 double CellStateVars::calcA_relax(int cell_idx, int species_idx1, int species_idx2, int idx) const {
 
 	double mu = calcReducedMw(cell_idx, species_idx1, species_idx2);
 	double mu_root = std::sqrt(mu);
 	double theta_v_m = params.charact_temps_vib(idx);
 
-	double theta_v_m_cbrt = std::cbrt(theta_v_m);
+	double theta_v_m_cbrt = fast_cbrt(theta_v_m);
 	double theta_v_m_4_3 = theta_v_m_cbrt * theta_v_m_cbrt * theta_v_m_cbrt * theta_v_m_cbrt;
 
 	return 1.16e-3 * mu_root * theta_v_m_4_3;
@@ -280,6 +297,7 @@ double CellStateVars::calcRelaxTime(int cell_idx, int species_vib, int idx) cons
 	double YnWn = 0.0;
 	double P_atm = getPressure(cell_idx) / 101325; 
 	double temp_tr = getTemp(cell_idx);
+	double inv_cbrt_temp_tr = 1.0 / fast_cbrt(temp_tr);
 	double term = 0.0;
 
 	for (int species_n = 0; species_n < params.nspecies; ++species_n) {
@@ -293,13 +311,14 @@ double CellStateVars::calcRelaxTime(int cell_idx, int species_vib, int idx) cons
 
 		double A = calcA_relax(cell_idx, species_n, species_vib, idx);
 		double B = calcB_relax(cell_idx, species_n, species_vib);
-		term += 1 / exp(A * (1 / std::cbrt(temp_tr) - B) - 18.42);
+		term += 1 / exp(A * (inv_cbrt_temp_tr - B) - 18.42);
 	}
 
 	tau = YnWn / (P_atm * YnWn * term);
 
 	return tau;
 }
+
 
 
 

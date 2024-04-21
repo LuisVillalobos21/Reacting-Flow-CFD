@@ -31,7 +31,11 @@ void CellJacobians::updateLHS() {
 
 		calcQuasi1DJacobian(cell_idx);
 
-		calcNonEqSrcTermJacobian(cell_idx);
+		double temp = state.getTemp(cell_idx);
+
+		if (temp > 1000) {
+			calcNonEqSrcTermJacobian(cell_idx);
+		}
 	}
 }
 
@@ -61,7 +65,7 @@ void CellJacobians::calcPrimVarJacobian(int cell_idx) {
 
 	for (int dim = 0; dim < params.ndimension; ++dim) {
 
-		double vel = state.getVel_components(cell_idx)(dim);
+		double vel = state.getVel_components(cell_idx);
 
 		cell_vec[cell_idx].prim_var_jac.block(params.vel_idx, 0, 1, params.nspecies) =
 			vel * Eigen::RowVectorXd::Ones(params.nspecies);
@@ -100,14 +104,14 @@ void CellJacobians::calcPartial_Et_u(int cell_idx) {
 
 	int row_idx = params.T_idx;
 
-	Eigen::VectorXd vel_components = state.getVel_components(cell_idx);
+	double vel_components = state.getVel_components(cell_idx);
 	double rho = state.getRho(cell_idx);
 
 	for (int i = 0; i < params.ndimension; ++i) {
 
 		int col_idx = params.vel_idx + i;
 
-		cell_vec[cell_idx].prim_var_jac(row_idx, col_idx) += rho * vel_components(i); 
+		cell_vec[cell_idx].prim_var_jac(row_idx, col_idx) += rho * vel_components; 
 	}
 }
 
@@ -285,7 +289,7 @@ void CellJacobians::calcChemSrcTermJacobian(int cell_idx) {
 
 	if (temp > 1000) {
 		calcPartialOmega_Rho_s_Diag(cell_idx);
-		//calcPartialOmega_Rho_s_OffDiag(cell_idx);
+		calcPartialOmega_Rho_s_OffDiag(cell_idx);
 	}
 }
 
@@ -294,22 +298,22 @@ void CellJacobians::calcPartialOmega_Rho_s_Diag(int cell_idx) {
 	double temp_tr = state.getTemp(cell_idx);
 	double temp_V = state.getTemp_V(cell_idx);
 
-	Eigen::VectorXd rho_vec = state.cell_vec[cell_idx].var_vec.segment(0, params.nspecies);
+	Eigen::VectorXd species_con = state.cell_vec[cell_idx].concentrations;
 
 	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
 		int row_idx = species_idx;
 		int col_idx = species_idx;
 
-		double d_rho = abs(rho_vec(species_idx)) * sqrt(2.22e-9);
+		double d_rho = abs(species_con(species_idx)) * sqrt(2.22e-9);
 
-		Eigen::VectorXd rho_vec_plus = rho_vec;
-		Eigen::VectorXd rho_vec_minus = rho_vec;
+		Eigen::VectorXd species_con_plus = species_con;
+		Eigen::VectorXd species_con_minus = species_con;
 
-		rho_vec_plus(species_idx) += d_rho;
-		rho_vec_minus(species_idx) -= d_rho;
+		species_con_plus(species_idx) += d_rho;
+		species_con_minus(species_idx) -= d_rho;
 
-		double left_value = chem.calcSpeciesProduction(rho_vec_minus, temp_tr, temp_V, species_idx);
-		double right_value = chem.calcSpeciesProduction(rho_vec_plus, temp_tr, temp_V, species_idx);
+		double left_value = chem.calcSpeciesProduction(species_con_minus, temp_tr, temp_V, species_idx);
+		double right_value = chem.calcSpeciesProduction(species_con_plus, temp_tr, temp_V, species_idx);
 
 		double jacobian_value = (right_value - left_value) / (2 * d_rho);
 
@@ -319,9 +323,10 @@ void CellJacobians::calcPartialOmega_Rho_s_Diag(int cell_idx) {
 
 void CellJacobians::calcPartialOmega_Rho_s_OffDiag(int cell_idx) {
 
-	Eigen::VectorXd rho_vec = state.cell_vec[cell_idx].var_vec.segment(0, params.nspecies);
 	double temp_tr = state.getTemp(cell_idx);
 	double temp_V = state.getTemp_V(cell_idx);
+
+	Eigen::VectorXd species_con = state.cell_vec[cell_idx].concentrations;
 
 	for (int row_species_idx = 0; row_species_idx < params.nspecies; ++row_species_idx) {
 		for (int col_species_idx = 0; col_species_idx < params.nspecies; ++col_species_idx) {
@@ -330,16 +335,16 @@ void CellJacobians::calcPartialOmega_Rho_s_OffDiag(int cell_idx) {
 				continue;
 			}
 
-			double d_rho = abs(rho_vec(col_species_idx)) * sqrt(2.22e-9);
+			double d_rho = abs(species_con(col_species_idx)) * sqrt(2.22e-9);
 
-			Eigen::VectorXd rho_vec_plus = rho_vec;
-			Eigen::VectorXd rho_vec_minus = rho_vec;
+			Eigen::VectorXd species_con_plus = species_con;
+			Eigen::VectorXd species_con_minus = species_con;
 
-			rho_vec_plus(col_species_idx) += d_rho;
-			rho_vec_minus(col_species_idx) -= d_rho;
+			species_con_plus(col_species_idx) += d_rho;
+			species_con_minus(col_species_idx) -= d_rho;
 
-			double left_value = chem.calcSpeciesProduction(rho_vec_minus, temp_tr, temp_V, row_species_idx);
-			double right_value = chem.calcSpeciesProduction(rho_vec_plus, temp_tr, temp_V, row_species_idx);
+			double left_value = chem.calcSpeciesProduction(species_con_minus, temp_tr, temp_V, row_species_idx);
+			double right_value = chem.calcSpeciesProduction(species_con_plus, temp_tr, temp_V, row_species_idx);
 
 			double jacobian_value = (right_value - left_value) / (2 * d_rho);
 

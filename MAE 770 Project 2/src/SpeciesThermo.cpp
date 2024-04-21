@@ -140,14 +140,14 @@ double SpeciesThermo::calcEnthalpyEQ(double temp)  const {
     if (temp < 1000)
         return (R_U / molecular_weight) * (A_low * temp +
             0.5 * B_low * temp2 +
-            (1.0 / 3.0) * C_low * temp3 +
+            (0.33333333333) * C_low * temp3 +
             0.25 * D_low * temp4 +
             0.2 * E_low * temp5 +
             F_low);
     else
         return (R_U / molecular_weight) * (A_high * temp +
             0.5 * B_high * temp2 +
-            (1.0 / 3.0) * C_high * temp3 +
+            (0.33333333333) * C_high * temp3 +
             0.25 * D_high * temp4 +
             0.2 * E_high * temp5 +
             F_high);

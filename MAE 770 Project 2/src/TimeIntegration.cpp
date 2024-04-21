@@ -20,12 +20,18 @@ TimeEvolveSolution::TimeEvolveSolution(const SimParameters& params,
 
 	res_vec_vibe.resize(mesh.jmax + 1);
 	res_vec_vibe.setZero();
+
+	inverted_M_w.resize(params.nspecies);
+	for (int species_idx = 0; species_idx < params.nspecies; ++species_idx) {
+		double M_w = species.getMw(species_idx);
+		inverted_M_w(species_idx) = 1.0 / M_w;
+	}
 }
 
 double TimeEvolveSolution::computeTimeStep(int cell_idx) {
 
 	double dx = mesh.getCelldx1D(cell_idx);
-	double u = state.getVel_components(cell_idx).norm();
+	double u = state.getVel_components(cell_idx);
 	double a = state.getSoundSpeed(cell_idx);
 
 	return (params.CFL * dx) / (u + a);
@@ -58,9 +64,9 @@ void TimeEvolveSolution::evolveCells() {
 
 	SolutionJacobians.updateLHS();
 
-	if (chem_switch == 1) {
-		SolutionJacobians.updateLHSChem();
-	}
+	//if (chem_switch == 1) {
+	//	SolutionJacobians.updateLHSChem();
+	//}
 
 	for (int cell_idx = 1; cell_idx < mesh.jmax; ++cell_idx) {
 
@@ -71,11 +77,9 @@ void TimeEvolveSolution::evolveCells() {
 
 	SolutionResiduals.updateRHS();
 
-	if (chem_switch == 1) {
-		SolutionResiduals.updateRHSChem();
-	}
-
-	SolutionResiduals.addVectors();
+	//if (chem_switch == 1) {
+	//	SolutionResiduals.updateRHSChem();
+	//}
 
 	LinSolveCells();
 }
@@ -86,6 +90,7 @@ void TimeEvolveSolution::updateDerivedVars() {
 
 		state.cell_vec[cell_idx].Rho = state.calcRho(cell_idx);
 		state.cell_vec[cell_idx].mass_fracs = state.calcMassfracs(cell_idx);
+		state.cell_vec[cell_idx].concentrations = state.cell_vec[cell_idx].var_vec.segment(0, params.nspecies).cwiseProduct(inverted_M_w);
 		state.cell_vec[cell_idx].Pressure = state.calcPressure(cell_idx);
 	}
 }

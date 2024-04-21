@@ -22,13 +22,15 @@ struct TimeEvolveSolution {
 	CellStateVars& state;
 	const Chemistry& chem;
 
+	Eigen::VectorXd inverted_M_w;
+
 	CellJacobians SolutionJacobians;
 	CellResiduals SolutionResiduals;
 
 	std::vector<TimeEvolveCell> cell_vec;
 
 	int chem_switch = 0;
-	double chem_tol = 1e-2;
+	double chem_tol = 1e-3;
 
 	double resnorm_momentum_0;
 	double resnorm_energy_0;
