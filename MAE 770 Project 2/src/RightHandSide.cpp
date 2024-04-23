@@ -41,9 +41,10 @@ void CellResiduals::updateRHSChem() {
 	for (int cell_idx = 1; cell_idx < mesh.jmax; ++cell_idx) {
 
 		double temp = state.getTemp(cell_idx);
+		double area = mesh.getCellArea1D(cell_idx);
 
 		if (temp > 1000) {
-			cell_src_vec[cell_idx].vec += calcChemSrcVec(cell_idx); // this needs to get multipled by area
+			cell_res_vec[cell_idx].vec += area * calcChemSrcVec(cell_idx); // this needs to get multipled by area
 		}
 	}
 }
